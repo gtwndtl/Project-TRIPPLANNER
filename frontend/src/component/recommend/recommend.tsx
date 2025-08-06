@@ -25,7 +25,7 @@ const Recommend = () => {
         fetchLandmarks();
     }, []);
 
-    const topLandmarks = landmarks.slice(0, 5);
+    const topLandmarks = landmarks.slice(0, 6);
 
     return (
         <div className="carousel-recommend-wrapper">
@@ -43,7 +43,7 @@ const Recommend = () => {
                             >
                                 <div className="carousel-content-box">
                                     <div className="carousel-header">
-                                        <strong>Recommended for you</strong>
+                                        <strong>สถานที่แนะนำ</strong>
                                     </div>
                                     <div className="carousel-place-name">
                                         {item.Name ?? 'ไม่ระบุชื่อ'}
