@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Form, Input, Button, Row, Col, Upload, Typography, message, DatePicker } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Row, Col, Upload, Typography, message, DatePicker, Avatar } from 'antd';
+import { UploadOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { GetUserById, UpdateUser } from '../../../services/https';
 import './profile.css';
@@ -157,13 +157,14 @@ const Profile = () => {
                 <div className="button-group">{renderButtons()}</div>
               </Col>
               <Col xs={24} md={8} className="avatar-section">
-                <div className="avatar-placeholder" />
+                <Avatar size={64} icon={<UserOutlined />} />
                 <Upload showUploadList={false}>
                   <Button icon={<UploadOutlined />} type="primary">
                     Upload a picture
                   </Button>
                 </Upload>
               </Col>
+
             </Row>
           </Form>
         )}

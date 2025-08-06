@@ -23,14 +23,11 @@
   padding-top: 80px;
 }
 
-.avatar-placeholder {
-  width: 100px;
-  height: 100px;
-  background-color: #e0e0e0;
+.avatar-section .ant-avatar {
+  background-color: #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   border-radius: 50%;
-  margin-bottom: 16px;
 }
-
 .delete-section {
   margin-top: 24px;
 }
