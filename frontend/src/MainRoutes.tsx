@@ -5,6 +5,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import ChatPage from "./page/chatpage/chatpage";
 import TripSummaryPage from "./page/tripsummarypage/tripsummarypage";
 import SettingPage from "./page/settingpage/settingpage";
+import NoPermission from "./page/test/test";
 
 const MainRoutes: React.FC = () => {
   const router = createBrowserRouter([
@@ -23,6 +24,10 @@ const MainRoutes: React.FC = () => {
     {
       path: "/settings/*",
       element: <SettingPage />,
+    },
+        {
+      path: "/test",
+      element: <NoPermission />,
     },
   ]);
 

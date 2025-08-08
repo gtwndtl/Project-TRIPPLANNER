@@ -1,0 +1,106 @@
+:root {
+  --bg: #ffffff;                 /* พื้นหลังขาว */
+  --card: #ffffff;
+  --text: #1d1d1f;               /* สีตัวหนังสือหลัก */
+  --subtext: #6e6e73;
+  --divider: #e5e5ea;
+  --shadow: 0 6px 20px rgba(0,0,0,0.06);
+  --radius: 20px;
+  --blue: #007aff;               /* Apple Blue */
+
+  --btn-fg: #ffffff;
+  --btn-bg: var(--blue);
+  --btn-bg-hover: #0a7cff;
+  --btn-outline-fg: var(--blue);
+  --btn-outline-bg: #ffffff;
+  --btn-outline-hover: #f2f2f7;
+  --ring: 0 0 0 3px rgba(0, 122, 255, 0.25);
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+}
+
+/* ---------- Layout ---------- */
+.unauthorized-root {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg); /* ขาวสะอาด */
+}
+
+.unauthorized-card {
+  width: 100%;
+  max-width: 680px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 48px 40px;
+  text-align: center;
+  border: 1px solid var(--divider);
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #f2f2f7;
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.subtitle {
+  color: var(--subtext);
+  font-size: 15px;
+  max-width: 50ch;
+  margin: 0 auto 28px;
+}
+
+/* ---------- Buttons ---------- */
+.button-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+}
+
+.btn-primary:hover {
+  background: var(--btn-bg-hover);
+}
+
+.btn-secondary {
+  background: var(--btn-outline-bg);
+  color: var(--btn-outline-fg);
+  border: 1px solid rgba(0,122,255,0.2);
+}
+
+.btn-secondary:hover {
+  background: var(--btn-outline-hover);
+}
