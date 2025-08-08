@@ -56,3 +56,12 @@
 .carousel-icon:hover {
   color: #ff4d4f;
 }
+
+.spinner-wrapper {
+  height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f5f5; /* สีพื้นหลังจาง */
+  border-radius: 16px;
+}

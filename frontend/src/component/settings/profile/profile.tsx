@@ -157,14 +157,13 @@ const Profile = () => {
                 <div className="button-group">{renderButtons()}</div>
               </Col>
               <Col xs={24} md={8} className="avatar-section">
-                <Avatar size={64} icon={<UserOutlined />} />
+                <Avatar size={128} icon={<UserOutlined />} />
                 <Upload showUploadList={false}>
-                  <Button icon={<UploadOutlined />} type="primary">
+                  <Button icon={<UploadOutlined />} type="text">
                     Upload a picture
                   </Button>
                 </Upload>
               </Col>
-
             </Row>
           </Form>
         )}

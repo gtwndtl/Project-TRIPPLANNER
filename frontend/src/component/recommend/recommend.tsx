@@ -30,7 +30,9 @@ const Recommend = () => {
     return (
         <div className="carousel-recommend-wrapper">
             {loading ? (
-                <Spin />
+                <div className="spinner-wrapper">
+                    <Spin size="large" />
+                </div>
             ) : topLandmarks.length > 0 ? (
                 <Carousel autoplay={{ dotDuration: true }} autoplaySpeed={5000}>
                     {topLandmarks.map((item) => (
@@ -62,6 +64,7 @@ const Recommend = () => {
             )}
         </div>
     );
+
 };
 
 export default Recommend;

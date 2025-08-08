@@ -4,7 +4,7 @@ import Home from "./page/home/home";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import ChatPage from "./page/chatpage/chatpage";
 import TripSummaryPage from "./page/tripsummarypage/tripsummarypage";
-import Settings from "./page/settingpage/settings";
+import SettingPage from "./page/settingpage/settingpage";
 
 const MainRoutes: React.FC = () => {
   const router = createBrowserRouter([
@@ -20,14 +20,10 @@ const MainRoutes: React.FC = () => {
       path: "/trip",
       element: <TripSummaryPage />,
     },
-    // {
-    //   path: "/settings/*",
-    //   element: <SettingPage />,
-    // },
     {
-      path: "/settings",
-      element: <Settings />,
-    }
+      path: "/settings/*",
+      element: <SettingPage />,
+    },
   ]);
 
   return (

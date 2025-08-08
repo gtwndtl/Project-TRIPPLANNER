@@ -126,7 +126,6 @@ const Chat = () => {
     },
   ]);
   const [landmarks, setLandmarks] = useState<LandmarkInterface[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -521,7 +520,7 @@ ${landmarkNames}
     'ฉันอยากไปสาธร',
     'ฉันอยากไปไหนก็ไม่รู้',
   ];
-
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);

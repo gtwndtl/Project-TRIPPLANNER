@@ -18,16 +18,17 @@
 .avatar-section {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: 80px;
+  gap: 20px;
 }
 
 .avatar-section .ant-avatar {
   background-color: #f0f0f0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border-radius: 50%;
 }
+
 .delete-section {
   margin-top: 24px;
 }
