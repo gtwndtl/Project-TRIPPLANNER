@@ -10,9 +10,13 @@ import {
   PostGroq,
   CreateTrip,
   CreateShortestPath,
+  CreateCondition,
 } from '../../services/https';
 import { PlusCircleOutlined } from '@ant-design/icons';
 
+// ดึง User_id จาก localStorage (เก็บเป็น number)
+const userIdStr = localStorage.getItem('user_id');
+const userIdNum = userIdStr ? parseInt(userIdStr, 10) : 0;
 
 // ฟังก์ชัน parse ข้อความแผนทริป LLM เป็น array กิจกรรม {day, startTime, endTime, description}
 function parseTripPlanTextToActivities(text: string) {
@@ -20,7 +24,7 @@ function parseTripPlanTextToActivities(text: string) {
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l !== '');
-  const activities = [];
+  const activities: Array<{ day: number; startTime: string; endTime: string; description: string }> = [];
   let currentDay = 0;
 
   for (let i = 0; i < lines.length; i++) {
@@ -135,6 +139,10 @@ const Chat = () => {
         setLandmarks(data);
       } catch (error) {
         console.error('โหลดข้อมูล landmark ล้มเหลว', error);
+        setMessages((prev) => [
+          ...prev,
+          { text: 'ขออภัยเกิดข้อผิดพลาดในการดึงข้อมูลสถานที่ กรุณาลองใหม่ภายหลัง', sender: 'bot' },
+        ]);
       }
     };
     fetchLandmarks();
@@ -151,6 +159,53 @@ const Chat = () => {
     }
     return null;
   };
+
+  // ฟังก์ชันบันทึก Condition (ไม่รับ userId เป็นพารามิเตอร์ ใช้ userIdNum จากด้านบน)
+// แทนที่ฟังก์ชันเดิมทั้งก้อนด้วยอันนี้
+// แทนที่ฟังก์ชันเดิมทั้งก้อนด้วยอันนี้
+const saveTripCondition = async (
+  userId: number,
+  tripDetails?: {
+    day: string | number;
+    price: number;
+    accommodation: string;
+    landmark: string;
+    style: string;
+  }
+) => {
+  try {
+    // กันพังกรณีโดนเรียกโดยไม่ได้ส่ง tripDetails มา
+    if (!tripDetails) {
+      console.warn('[Condition] tripDetails is undefined. Skip creating condition.');
+      return;
+    }
+    if (tripDetails.day === undefined || tripDetails.day === null) {
+      console.warn('[Condition] tripDetails.day is missing. Skip creating condition.');
+      return;
+    }
+
+    // แปลง Day เป็น string ให้ตรง ConditionInterface
+    const payload = {
+      User_id: userId,
+      Day: tripDetails.day.toString(),          // <- สำคัญ: เป็น string ตาม interface
+      Price: tripDetails.price,
+      Accommodation: tripDetails.accommodation,
+      Landmark: tripDetails.landmark,
+      Style: tripDetails.style,
+    };
+
+    console.log('[Condition] ส่งข้อมูล Condition:', payload);
+    const res = await CreateCondition(payload);
+    console.log('[Condition] บันทึกเงื่อนไขทริปสำเร็จ:', res);
+    // ไม่ return อะไรเพิ่ม เพื่อไม่กระทบโค้ดส่วนอื่น
+  } catch (error) {
+    console.error('[Condition] เกิดข้อผิดพลาดในการบันทึกเงื่อนไขทริป', error);
+    // ไม่ throw เพื่อไม่ให้ flow อื่นล้ม
+  }
+};
+
+
+
 
   const generateRouteAndPlan = async (id: number, keyword: string, days: number) => {
     try {
@@ -188,34 +243,55 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
 
       const groqRes = await PostGroq(prompt);
       const tripPlanText = groqRes?.choices?.[0]?.message?.content?.trim();
-
       if (!tripPlanText) {
-        throw new Error('Groq ไม่ได้ตอบกลับข้อความที่ต้องการ');
+        setMessages((prev) => [
+          ...prev,
+          { text: 'ขออภัย เกิดข้อผิดพลาดระหว่างการสร้างแผนทริป กรุณาลองใหม่ภายหลัง', sender: 'bot' },
+        ]);
       }
 
       setMessages((prev) => [...prev, { text: tripPlanText, sender: 'bot', isTripPlan: true }]);
       const accIdStr = routeData.accommodation?.id ?? '';
       const accIdNum = parseInt(accIdStr.replace(/[^\d]/g, ''), 10);
-      // สร้างข้อมูล Trip
+
+const conditionPayload = {
+  User_id: userIdNum,
+  Day: days.toString(),           // ให้เป็น string ตาม ConditionInterface
+  Price: 5000,                    // TODO: เอาจาก UI หรือค่าที่ต้องการ
+  Accommodation: 'โรงแรม',         // TODO: เอาจาก UI หรือค่าที่ต้องการ
+  Landmark: keyword,
+  Style: 'ชิวๆ',                  // TODO: เอาจาก UI หรือค่าที่ต้องการ
+};
+
+console.log('[Condition] POST payload:', conditionPayload);
+let conIdFromCreate = 1; // fallback
+try {
+  const conRes = await CreateCondition(conditionPayload);
+  console.log('[Condition] create success:', conRes);
+  if (conRes?.ID) {
+    conIdFromCreate = conRes.ID; // ใช้ Con_id ที่ได้จาก backend
+  }
+} catch (err) {
+  console.error('[Condition] create failed, using default Con_id=1', err);
+}
+      // บันทึก Trip
       const newTrip: TripInterface = {
         Name: keyword,
         Types: 'custom',
         Days: days,
-        Con_id: 1,
+        Con_id: conIdFromCreate,
         Acc_id: accIdNum,
       };
       console.log('Payload to create trip:', newTrip);
       console.log('routeData.accommodation?.id:', routeData.accommodation?.id);
 
-
-      // บันทึก Trip
       const savedTrip = await CreateTrip(newTrip);
       console.log('บันทึก Trip สำเร็จ:', savedTrip);
       setMessages((prev) => [...prev, { text: `บันทึกทริปสำเร็จ! (ID: ${savedTrip.ID})`, sender: 'bot' }]);
       localStorage.setItem('TripID', savedTrip.ID!.toString());
 
       // แปลงข้อความแผนทริปเป็นกิจกรรม
-      const activities = parseTripPlanTextToActivities(tripPlanText);
+      const activities = parseTripPlanTextToActivities(tripPlanText || '');
       console.log('parsed activities:', activities);
 
       let PathIndex = 1;
@@ -227,7 +303,8 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         // หาแผนของวันนั้น
         if (!routeData.trip_plan_by_day || !Array.isArray(routeData.trip_plan_by_day)) {
           console.error('routeData.trip_plan_by_day is missing or not an array:', routeData.trip_plan_by_day);
-          return; // หรือจัดการ error ตามเหมาะสม
+          setMessages((prev) => [...prev, { text: 'เกิดข้อผิดพลาดในการดึงข้อมูลแผนทริป กรุณาลองใหม่', sender: 'bot' }]);
+          return;
         }
 
         const dayPlan = routeData.trip_plan_by_day.find((d: { day: number }) => d.day === act.day);
@@ -243,51 +320,41 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         let fromCode = '';
         let toCode = '';
         console.log(`วัน ${act.day}: currentIndex=${currentIndex}, plan.length=${dayPlan.plan?.length}`);
-        // กรณีกิจกรรมเช็คอินที่ที่พัก (เริ่มวัน) ให้ fromCode = toCode = ที่พัก
+
         if (/เช็คอิน/.test(act.description)) {
+          // เริ่มวัน: from/to = ที่พัก
           fromCode = accommodationCode;
           toCode = accommodationCode;
-        }
-        // กรณีกิจกรรมเช็คเอาท์และเดินทางกลับ (จบวันสุดท้าย) ให้ fromCode = จุดสุดท้ายในแผน, toCode = ที่พัก
-        else if (/เช็คเอาท์/.test(act.description)) {
+        } else if (/เช็คเอาท์/.test(act.description)) {
+          // จบวันสุดท้าย: from = จุดสุดท้ายของวัน, to = ที่พัก
           if (dayPlan.plan && dayPlan.plan.length > 0) {
-            fromCode = dayPlan.plan[dayPlan.plan.length - 1].id; // จุดสุดท้ายในแผน
+            fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
           } else {
-            fromCode = accommodationCode; // fallback
+            fromCode = accommodationCode;
           }
           toCode = accommodationCode;
-        }
-        // กรณีกิจกรรมพักผ่อนที่ที่พัก (เช่น "พักผ่อนที่ ...") ให้ fromCode = จุดก่อนหน้า, toCode = ที่พัก
-        else if (/พักผ่อน/.test(act.description)) {
+        } else if (/พักผ่อน/.test(act.description)) {
+          // พักผ่อน: from = จุดสุดท้ายของวัน, to = ที่พัก
           if (dayPlan.plan && dayPlan.plan.length > 0) {
-            fromCode = dayPlan.plan[dayPlan.plan.length - 1].id; // จุดสุดท้ายในแผน
+            fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
           } else {
-            fromCode = accommodationCode; // fallback
+            fromCode = accommodationCode;
           }
           toCode = accommodationCode;
-        }
-        // กรณีทั่วไป (กิจกรรมระหว่างวัน) กำหนด fromCode และ toCode จากแผน
-        else {
-          if (
-            dayPlan.plan &&
-            dayPlan.plan.length > 0
-          ) {
+        } else {
+          // กิจกรรมระหว่างวัน
+          if (dayPlan.plan && dayPlan.plan.length > 0) {
             if (currentIndex === 0) {
               fromCode = accommodationCode;
               toCode = dayPlan.plan[0].id;
-            } else if (
-              currentIndex > 0 &&
-              currentIndex < dayPlan.plan.length
-            ) {
+            } else if (currentIndex > 0 && currentIndex < dayPlan.plan.length) {
               fromCode = dayPlan.plan[currentIndex - 1].id;
               toCode = dayPlan.plan[currentIndex].id;
             } else {
-              // fallback กรณี index เกินขอบเขต
               fromCode = accommodationCode;
               toCode = accommodationCode;
             }
           } else {
-            // fallback กรณีไม่มีแผน
             fromCode = accommodationCode;
             toCode = accommodationCode;
           }
@@ -298,7 +365,6 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
           (p: { from: string; to: string }) =>
             (p.from === fromCode && p.to === toCode) || (p.from === toCode && p.to === fromCode)
         );
-
         const distance = path ? path.distance_km : 0;
 
         const shortestPathData: ShortestpathInterface = {
@@ -308,28 +374,27 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
           FromCode: fromCode,
           ToCode: toCode,
           Type: 'Activity',
-          Distance: parseFloat(distance.toString()), // หรือแค่ distance ถ้าเป็น number แล้ว
+          Distance: parseFloat(distance.toString()),
           ActivityDescription: act.description,
           StartTime: act.startTime,
           EndTime: act.endTime,
         };
 
         try {
-          console.log("ส่งข้อมูลไป shortest-paths:", JSON.stringify(shortestPathData, null, 2));
+          console.log('ส่งข้อมูลไป shortest-paths:', JSON.stringify(shortestPathData, null, 2));
           const res = await CreateShortestPath(shortestPathData);
           console.log('Test save success:', res);
         } catch (e) {
           console.error('Test save fail:', e);
         }
+
         if (!/เช็คอิน|เช็คเอาท์/.test(act.description)) {
           if (currentIndex + 1 < dayPlan.plan.length) {
             dayPlanIndices[act.day] = currentIndex + 1;
           } else {
             console.log(`วัน ${act.day}: currentIndex ถึงขีดจำกัดแล้ว (${currentIndex + 1} >= ${dayPlan.plan.length})`);
-            // ไม่เพิ่ม index เพราะเกินขอบเขต
           }
         }
-
       }
     } catch (error) {
       console.error('Error generating route or calling Groq', error);
@@ -342,12 +407,8 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
     }
   };
 
-
   const [selectedPlaceDays, setSelectedPlaceDays] = useState<number | null>(null);
-
   const [awaitingDays, setAwaitingDays] = useState(false);
-
-
 
   const handleUserMessage = async (userMessage: string) => {
     setMessages((prev) => [...prev, { text: userMessage, sender: 'user' }]);
@@ -355,12 +416,15 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
 
     // กรณีรอเลือกสถานที่จาก list
     if (awaitingUserSelection) {
-      const matched = suggestedPlaces.find(p => p.Name === msg);
+      const matched = suggestedPlaces.find((p) => p.Name === msg);
       if (matched) {
         setSelectedPlace(matched);
         setAwaitingConfirm(true);
         setAwaitingUserSelection(false);
-        setMessages((prev) => [...prev, { text: `คุณต้องการเลือกสถานที่ "${matched.Name}" ใช่ไหมคะ? (ตอบ ใช่ / ไม่)`, sender: 'bot' }]);
+        setMessages((prev) => [
+          ...prev,
+          { text: `คุณต้องการเลือกสถานที่ "${matched.Name}" ใช่ไหมคะ? (ตอบ ใช่ / ไม่)`, sender: 'bot' },
+        ]);
       } else {
         const idx = parseInt(msg, 10) - 1;
         if (!isNaN(idx) && idx >= 0 && idx < suggestedPlaces.length) {
@@ -368,28 +432,56 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
           setSelectedPlace(place);
           setAwaitingConfirm(true);
           setAwaitingUserSelection(false);
-          setMessages((prev) => [...prev, { text: `คุณต้องการเลือกสถานที่ "${place.Name}" ใช่ไหมคะ? (ตอบ ใช่ / ไม่)`, sender: 'bot' }]);
+          setMessages((prev) => [
+            ...prev,
+            { text: `คุณต้องการเลือกสถานที่ "${place.Name}" ใช่ไหมคะ? (ตอบ ใช่ / ไม่)`, sender: 'bot' },
+          ]);
         } else {
-          setMessages((prev) => [...prev, { text: `กรุณาพิมพ์ชื่อสถานที่ที่ต้องการ หรือพิมพ์เลขที่ถูกต้องจากรายการ เช่น 1 ถึง ${suggestedPlaces.length}`, sender: 'bot' }]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: `กรุณาพิมพ์ชื่อสถานที่ที่ต้องการ หรือพิมพ์เลขที่ถูกต้องจากรายการ เช่น 1 ถึง ${suggestedPlaces.length}`,
+              sender: 'bot',
+            },
+          ]);
         }
       }
       return;
     }
+
     // กรณีรอ confirm สถานที่
     if (awaitingConfirm) {
       const normalizedMsg = msg.toLowerCase().trim();
       if (normalizedMsg.startsWith('ใช่')) {
         if (selectedPlace && selectedPlaceDays !== null) {
-          generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, selectedPlaceDays);
+          // ✅ สร้าง Condition ก่อน
+          const tripDetails = {
+            day: selectedPlaceDays.toString(),
+            price: 5000, // TODO: ปรับตาม UI/อินพุตจริง
+            accommodation: 'โรงแรม', // TODO: ปรับตามการเลือกจริง
+            landmark: selectedPlace?.Name || '',
+            style: 'ชิวๆ', // TODO: ปรับตามการเลือกจริง
+          };
+          await saveTripCondition(userIdNum, tripDetails);
+
+          // ✅ ไปสร้างเส้นทางและแผนทริปต่อทันที
+          await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, selectedPlaceDays);
+
+          // ✅ เคลียร์สถานะ
           setAwaitingConfirm(false);
           setSelectedPlace(null);
           setSelectedPlaceDays(null);
           setAwaitingDays(false);
         } else {
-          setAwaitingConfirm(false);  // เพิ่มตรงนี้เพื่อเคลียร์สถานะ confirm
+          // ยังไม่มีจำนวนวัน → ขอจำนวนวันต่อ
+          setAwaitingConfirm(false);
           setAwaitingDays(true);
-          setMessages((prev) => [...prev, { text: `คุณต้องการไป "${selectedPlace?.Name}" กี่วันคะ? กรุณาพิมพ์จำนวนวันเป็นตัวเลข`, sender: 'bot' }]);
+          setMessages((prev) => [
+            ...prev,
+            { text: `คุณต้องการไป "${selectedPlace?.Name}" กี่วันคะ? กรุณาพิมพ์จำนวนวันเป็นตัวเลข`, sender: 'bot' },
+          ]);
         }
+        return;
       } else if (normalizedMsg.startsWith('ไม่')) {
         setMessages((prev) => [...prev, { text: 'โอเคค่ะ กรุณาพิมพ์คำค้นใหม่อีกครั้งนะคะ', sender: 'bot' }]);
         setAwaitingConfirm(false);
@@ -401,6 +493,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       return;
     }
 
+    // กรณีรอจำนวนวัน
     if (awaitingDays) {
       const daysOnly = msg.replace(/[^\d]/g, '');
       const daysNum = parseInt(daysOnly, 10);
@@ -408,23 +501,40 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       if (!isNaN(daysNum) && daysNum > 0) {
         setSelectedPlaceDays(daysNum);
         if (selectedPlace) {
-          generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, daysNum);
+          // ✅ สร้าง Condition ก่อน
+          const tripDetails = {
+            day: daysNum.toString(),
+            price: 5000, // TODO: ปรับตาม UI/อินพุตจริง
+            accommodation: 'โรงแรม', // TODO: ปรับตามการเลือกจริง
+            landmark: selectedPlace.Name || '',
+            style: 'ชิวๆ', // TODO: ปรับตามการเลือกจริง
+          };
+          await saveTripCondition(userIdNum, tripDetails);
+
+
+          // ✅ ไปสร้างเส้นทางและแผนทริปต่อ
+          await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, daysNum);
+
           setAwaitingDays(false);
-          setAwaitingConfirm(false);  // เคลียร์ confirm ด้วยในกรณีนี้ด้วย
+          setAwaitingConfirm(false);
           setSelectedPlace(null);
           setSelectedPlaceDays(null);
         } else {
-          setMessages((prev) => [...prev, { text: 'เกิดข้อผิดพลาด กรุณาเลือกสถานที่ใหม่อีกครั้ง', sender: 'bot' }]);
+          setMessages((prev) => [
+            ...prev,
+            { text: 'เกิดข้อผิดพลาด กรุณาเลือกสถานที่ใหม่อีกครั้ง', sender: 'bot' },
+          ]);
         }
       } else {
-        setMessages((prev) => [...prev, { text: 'กรุณาพิมพ์จำนวนวันเป็นตัวเลขที่ถูกต้องค่ะ', sender: 'bot' }]);
+        setMessages((prev) => [
+          ...prev,
+          { text: 'กรุณาพิมพ์จำนวนวันเป็นตัวเลขที่ถูกต้องค่ะ', sender: 'bot' },
+        ]);
       }
       return;
     }
 
-
-
-    // กรณีข้อความปกติ (วิเคราะห์ keyword + วัน)
+    // กรณีข้อความปกติ
     const analysis = extractKeywordAndDays(msg);
 
     if (analysis?.keyword) {
@@ -436,18 +546,18 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
 
       try {
         setLoading(true);
-        const landmarkNames = landmarks.map(l => l.Name).join(', ');
+        const landmarkNames = landmarks.map((l) => l.Name).join(', ');
         const prompt = `
-คุณคือผู้ช่วยแนะนำสถานที่ท่องเที่ยวในระบบของเรา
+  คุณคือผู้ช่วยแนะนำสถานที่ท่องเที่ยวในระบบของเรา
 
-สถานที่ที่เรามีในระบบมีดังนี้:
-${landmarkNames}
+  สถานที่ที่เรามีในระบบมีดังนี้:
+  ${landmarkNames}
 
-โปรดแนะนำสถานที่ที่ใกล้เคียงหรือเกี่ยวข้องกับคำว่า "${analysis.keyword}"
+  โปรดแนะนำสถานที่ที่ใกล้เคียงหรือเกี่ยวข้องกับคำว่า "${analysis.keyword}"
 
-**โปรดตอบเป็น JSON array ของชื่อสถานที่เท่านั้น เช่น ["วัดพระแก้ว", "วัดอรุณ"]**
-อย่าตอบข้อความอื่นหรือบรรยาย เอาแค่ 5 ชื่อ
-`;
+  **โปรดตอบเป็น JSON array ของชื่อสถานที่เท่านั้น เช่น ["วัดพระแก้ว", "วัดอรุณ"]**
+  อย่าตอบข้อความอื่นหรือบรรยาย เอาแค่ 5 ชื่อ
+  `;
 
         const groqRes = await PostGroq(prompt);
         let placeNamesFromLLM: string[] = [];
@@ -457,41 +567,72 @@ ${landmarkNames}
           console.error('แปลง JSON ผิดพลาด:', e);
         }
 
-        const matchedLandmarks = landmarks.filter(l => placeNamesFromLLM.some(name => l.Name?.includes(name)));
+        const matchedLandmarks = landmarks.filter((l) =>
+          placeNamesFromLLM.some((name) => l.Name?.includes(name))
+        );
 
         if (matchedLandmarks.length > 1) {
           setSuggestedPlaces(matchedLandmarks);
           setAwaitingUserSelection(true);
           if (typeof analysis.days === 'number' && analysis.days > 0) {
-            setSelectedPlaceDays(analysis.days);  // <-- เก็บจำนวนวันที่ extract ได้ตั้งแต่ต้น
+            setSelectedPlaceDays(analysis.days);
           } else {
             setSelectedPlaceDays(null);
           }
-          setMessages(prev => [
+          setMessages((prev) => [
             ...prev,
             {
-              text: `จาก "${analysis.keyword}" เราพบสถานที่ใกล้เคียงดังนี้:\n${matchedLandmarks.map((l, i) => `${i + 1}. ${l.Name}`).join('\n')}\nกรุณาพิมพ์เลขที่สถานที่ที่คุณต้องการเลือกค่ะ`,
+              text: `จาก "${analysis.keyword}" เราพบสถานที่ใกล้เคียงดังนี้:\n${matchedLandmarks
+                .map((l, i) => `${i + 1}. ${l.Name}`)
+                .join('\n')}\nกรุณาพิมพ์เลขที่สถานที่ที่คุณต้องการเลือกค่ะ`,
               sender: 'bot',
-            }
+            },
           ]);
           return;
         }
+
         if (matchedLandmarks.length === 1) {
           const matched = matchedLandmarks[0];
           setSelectedPlace(matched);
           if (typeof analysis.days === 'number' && analysis.days > 0) {
             setSelectedPlaceDays(analysis.days);
-            generateRouteAndPlan(matched.ID!, analysis.keyword, analysis.days);
+
+            // ✅ สร้าง Condition ก่อน
+            const tripDetails = {
+              day: analysis.days.toString(),
+              price: 5000, // TODO: ปรับตาม UI/อินพุตจริง
+              accommodation: 'โรงแรม', // TODO: ปรับตามการเลือกจริง
+              landmark: matched.Name || '',
+              style: 'ชิวๆ', // TODO: ปรับตามการเลือกจริง
+            };
+            await saveTripCondition(userIdNum, tripDetails);
+
+
+            // ✅ ไปสร้างเส้นทางและแผนทริป
+            await generateRouteAndPlan(matched.ID!, analysis.keyword, analysis.days);
           } else {
             setAwaitingDays(true);
-            setMessages(prev => [...prev, { text: `คุณต้องการไป "${matched.Name}" กี่วันคะ? กรุณาพิมพ์จำนวนวันเป็นตัวเลข`, sender: 'bot' }]);
+            setMessages((prev) => [
+              ...prev,
+              { text: `คุณต้องการไป "${matched.Name}" กี่วันคะ? กรุณาพิมพ์จำนวนวันเป็นตัวเลข`, sender: 'bot' },
+            ]);
           }
           return;
         }
-        setMessages(prev => [...prev, { text: `ไม่พบสถานที่ที่เกี่ยวข้องกับ "${analysis.keyword}" ในระบบของเรา ลองพิมพ์คำค้นใหม่ดูนะคะ`, sender: 'bot' }]);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            text: `ไม่พบสถานที่ที่เกี่ยวข้องกับ "${analysis.keyword}" ในระบบของเรา ลองพิมพ์คำค้นใหม่ดูนะคะ`,
+            sender: 'bot',
+          },
+        ]);
       } catch (error) {
         console.error(error);
-        setMessages(prev => [...prev, { text: 'เกิดข้อผิดพลาดในการค้นหาสถานที่ กรุณาลองใหม่', sender: 'bot' }]);
+        setMessages((prev) => [
+          ...prev,
+          { text: 'เกิดข้อผิดพลาดในการค้นหาสถานที่ กรุณาลองใหม่', sender: 'bot' },
+        ]);
       } finally {
         setLoading(false);
       }
@@ -499,11 +640,11 @@ ${landmarkNames}
     }
 
     // ข้อความอื่นๆ ทั่วไป
-    setMessages(prev => [...prev, { text: 'ขอบคุณสำหรับข้อความค่ะ หากต้องการวางแผนทริป พิมพ์ว่า "ฉันอยากไป..." พร้อมจำนวนวัน', sender: 'bot' }]);
+    setMessages((prev) => [
+      ...prev,
+      { text: 'ขอบคุณสำหรับข้อความค่ะ หากต้องการวางแผนทริป พิมพ์ว่า "ฉันอยากไป..." พร้อมจำนวนวัน', sender: 'bot' },
+    ]);
   };
-
-
-
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -515,11 +656,7 @@ ${landmarkNames}
     }
   };
 
-  const chatSuggestions = [
-    'ฉันอยากไปสยาม 3 วัน',
-    'ฉันอยากไปสาธร',
-    'ฉันอยากไปไหนก็ไม่รู้',
-  ];
+  const chatSuggestions = ['ฉันอยากไปสยาม 3 วัน', 'ฉันอยากไปสาธร', 'ฉันอยากไปไหนก็ไม่รู้'];
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -567,11 +704,7 @@ ${landmarkNames}
 
           <div className="chat-suggestions">
             {chatSuggestions.map((suggestion, index) => (
-              <Tag
-                key={index}
-                className="chat-suggestion-tag"
-                onClick={() => setChatInput(suggestion)}
-              >
+              <Tag key={index} className="chat-suggestion-tag" onClick={() => setChatInput(suggestion)}>
                 <PlusCircleOutlined className="chat-suggestion-icon" />
                 {suggestion}
               </Tag>

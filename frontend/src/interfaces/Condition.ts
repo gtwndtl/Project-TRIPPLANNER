@@ -1,6 +1,6 @@
 export interface ConditionInterface {
     ID?: number;
-    Day?: string; // Use string to represent date in 'YYYY-MM-DD' format // Use string to represent time in 'HH:mm:ss' format
+    Day?: string; 
     Price?: number; // Use number for price
     Accommodation?: string; // Accommodation name or ID
     Landmark?: string; // Landmark name or ID

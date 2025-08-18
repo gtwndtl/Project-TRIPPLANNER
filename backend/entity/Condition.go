@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"time"
+
 
 	"gorm.io/gorm"
 )
@@ -9,7 +9,7 @@ import (
 type Condition struct {
 	gorm.Model
 
-	Day           time.Time `binding:"required"`                     // วันที่เริ่มทริป
+	Day           string `binding:"required"`                     // วันที่เริ่มทริป
 	Price         float32   `binding:"required,gte=0"`             // งบประมาณ (>= 0)
 	Accommodation string    `binding:"required"`          // ที่พัก เช่น "โรงแรม", "โฮมสเตย์"
 	Landmark      string    `binding:"required"`               // สถานที่ เช่น "ธรรมชาติ", "วัด"

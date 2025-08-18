@@ -18,6 +18,7 @@ import (
 	"github.com/gtwndtl/trip-spark-builder/controller/Shortestpath"
 	"github.com/gtwndtl/trip-spark-builder/controller/Trips"
 	"github.com/gtwndtl/trip-spark-builder/controller/User"
+
 	"github.com/gtwndtl/trip-spark-builder/middlewares"
 )
 
@@ -51,7 +52,8 @@ func main() {
 	tripsCtrl := Trips.NewTripsController(db)
 	shortestpathCtrl := Shortestpath.NewShortestPathController(db, postgresDB)
 	routeCtrl := &GenTrip.RouteController{}
-
+	
+	
 	// Public routes (ไม่ต้องตรวจสอบ token)
 	r.POST("/signinuser", userCtrl.SignInUser)
 
@@ -71,11 +73,11 @@ func main() {
 	authorized.DELETE("/accommodations/:id", accommodationCtrl.Delete)
 
 	// Condition routes
-	authorized.POST("/conditions", conditionCtrl.Create)
-	authorized.GET("/conditions", conditionCtrl.GetAll)
-	authorized.GET("/conditions/:id", conditionCtrl.GetByID)
-	authorized.PUT("/conditions/:id", conditionCtrl.Update)
-	authorized.DELETE("/conditions/:id", conditionCtrl.Delete)
+	r.POST("/conditions", conditionCtrl.Create)
+	r.GET("/conditions", conditionCtrl.GetAll)
+	r.GET("/conditions/:id", conditionCtrl.GetByID)
+	r.PUT("/conditions/:id", conditionCtrl.Update)
+	r.DELETE("/conditions/:id", conditionCtrl.Delete)
 
 	// Landmark routes
 	authorized.POST("/landmarks", landmarkCtrl.Create)
@@ -113,12 +115,14 @@ func main() {
 	r.GET("/shortest-paths/:id", shortestpathCtrl.GetShortestPathByID)
 	r.PUT("/shortest-paths/:id", shortestpathCtrl.UpdateShortestPath)
 	r.DELETE("/shortest-paths/:id", shortestpathCtrl.DeleteShortestPath)
+	r.PUT("/shortest-paths/accommodation/bulk", shortestpathCtrl.BulkUpdateAccommodation)
 
 	r.GET("/distances", distanceCtrl.GetDistances)
 	r.GET("/mst", distanceCtrl.GetMST)
     r.GET("/gen-route", routeCtrl.GenerateRoute)
 	r.POST("/api/groq", GroqApi.PostGroq)
-
+	r.GET("/suggest", distanceCtrl.SuggestPlaces)
+	r.GET("/suggest/accommodations", distanceCtrl.SuggestAccommodations)
 	// Run server
 	r.Run(":8080")
 }
