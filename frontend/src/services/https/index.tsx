@@ -5,6 +5,8 @@ import type { AccommodationInterface } from "../../interfaces/Accommodation";
 import type { ConditionInterface } from "../../interfaces/Condition";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { TripInterface } from "../../interfaces/Trips";
+import type { ReviewInterface } from "../../interfaces/review";
+import type { RecommendInterface } from "../../interfaces/recommend";
 import type { LandmarkInterface } from "../../interfaces/Landmark";
 import type { RestaurantInterface } from "../../interfaces/Restaurant";
 import type { UserInterface } from "../../interfaces/User";
@@ -565,6 +567,94 @@ async function VerifyOTP(email: string, otp: string): Promise<{ message: string 
   }
 }
 
+async function GetAllReviews(): Promise<ReviewInterface[]> {
+  try {
+    const response = await axios.get<ReviewInterface[]>(`${apiUrl}/reviews`, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function GetReviewById(id: number): Promise<ReviewInterface> {
+  try {
+    const response = await axios.get<ReviewInterface>(`${apiUrl}/reviews/${id}`, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function CreateReview(review: ReviewInterface): Promise<ReviewInterface> {
+  try {
+    const response = await axios.post<ReviewInterface>(`${apiUrl}/reviews`, review, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function UpdateReview(id: number, review: ReviewInterface): Promise<ReviewInterface> {
+  try {
+    const response = await axios.put<ReviewInterface>(`${apiUrl}/reviews/${id}`, review, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function DeleteReview(id: number): Promise<void> {
+  try {
+    await axios.delete(`${apiUrl}/reviews/${id}`, requestOptions);
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function GetAllRecommends(): Promise<RecommendInterface[]> {
+  try {
+    const response = await axios.get<RecommendInterface[]>(`${apiUrl}/recommends`, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function GetRecommendById(id: number): Promise<RecommendInterface> {
+  try {
+    const response = await axios.get<RecommendInterface>(`${apiUrl}/recommends/${id}`, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function CreateRecommend(recommend: RecommendInterface): Promise<RecommendInterface> {
+  try {
+    const response = await axios.post<RecommendInterface>(`${apiUrl}/recommends`, recommend, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function UpdateRecommend(id: number, recommend: RecommendInterface): Promise<RecommendInterface> {
+  try {
+    const response = await axios.put<RecommendInterface>(`${apiUrl}/recommends/${id}`, recommend, requestOptions);
+    return response.data;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+async function DeleteRecommend(id: number): Promise<void> {
+  try {
+    await axios.delete(`${apiUrl}/recommends/${id}`, requestOptions);
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
 
 export {
     SignInUser,
@@ -573,6 +663,16 @@ export {
     CreateAccommodation,
     UpdateAccommodation,
     DeleteAccommodation,
+    GetAllReviews,
+    GetReviewById,
+    CreateReview,
+    UpdateReview,
+    DeleteReview,
+    GetAllRecommends,
+    GetRecommendById,
+    CreateRecommend,
+    UpdateRecommend,
+    DeleteRecommend,
     GetAllConditions,
     GetConditionById,
     CreateCondition,

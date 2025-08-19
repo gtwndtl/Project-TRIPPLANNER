@@ -18,6 +18,8 @@ import (
 	"github.com/gtwndtl/trip-spark-builder/controller/Shortestpath"
 	"github.com/gtwndtl/trip-spark-builder/controller/Trips"
 	"github.com/gtwndtl/trip-spark-builder/controller/User"
+	"github.com/gtwndtl/trip-spark-builder/controller/Review"
+	"github.com/gtwndtl/trip-spark-builder/controller/Recommend"
 
 	"github.com/gtwndtl/trip-spark-builder/middlewares"
 )
@@ -52,7 +54,8 @@ func main() {
 	tripsCtrl := Trips.NewTripsController(db)
 	shortestpathCtrl := Shortestpath.NewShortestPathController(db, postgresDB)
 	routeCtrl := &GenTrip.RouteController{}
-	
+	reviewCtrl := Review.ReviewController{DB: db}
+	recommendCtrl := Recommend.RecommendController{DB: db}
 	
 	// Public routes (ไม่ต้องตรวจสอบ token)
 	r.POST("/signinuser", userCtrl.SignInUser)
@@ -123,6 +126,21 @@ func main() {
 	r.POST("/api/groq", GroqApi.PostGroq)
 	r.GET("/suggest", distanceCtrl.SuggestPlaces)
 	r.GET("/suggest/accommodations", distanceCtrl.SuggestAccommodations)
+
+	// 👉 Review routes
+	r.POST("/reviews", reviewCtrl.Create)
+	r.GET("/reviews", reviewCtrl.GetAll)
+	r.GET("/reviews/:id", reviewCtrl.GetByID)
+	r.PUT("/reviews/:id", reviewCtrl.Update)
+	r.DELETE("/reviews/:id", reviewCtrl.Delete)
+
+	// 👉 Recommend routes
+	r.POST("/recommends", recommendCtrl.Create)
+	r.GET("/recommends", recommendCtrl.GetAll)
+	r.GET("/recommends/:id", recommendCtrl.GetByID)
+	r.PUT("/recommends/:id", recommendCtrl.Update)
+	r.DELETE("/recommends/:id", recommendCtrl.Delete)
+	
 	// Run server
 	r.Run(":8080")
 }
