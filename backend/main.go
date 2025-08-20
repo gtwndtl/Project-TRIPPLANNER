@@ -111,6 +111,7 @@ func main() {
 	r.GET("/trips/:id", tripsCtrl.GetTripByID)
 	authorized.PUT("/trips/:id", tripsCtrl.UpdateTrip)
 	authorized.DELETE("/trips/:id", tripsCtrl.DeleteTrip)
+	r.POST("/trips/:id/export", tripsCtrl.ExportTripToTemplate)
 
 	// Shortest Path routes
 	r.POST("/shortest-paths", shortestpathCtrl.CreateShortestPath)
