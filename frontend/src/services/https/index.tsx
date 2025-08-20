@@ -5,8 +5,8 @@ import type { AccommodationInterface } from "../../interfaces/Accommodation";
 import type { ConditionInterface } from "../../interfaces/Condition";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { TripInterface } from "../../interfaces/Trips";
-import type { ReviewInterface } from "../../interfaces/review";
-import type { RecommendInterface } from "../../interfaces/recommend";
+import type { ReviewInterface } from "../../interfaces/Review";
+import type { RecommendInterface } from "../../interfaces/Recommend";
 import type { LandmarkInterface } from "../../interfaces/Landmark";
 import type { RestaurantInterface } from "../../interfaces/Restaurant";
 import type { UserInterface } from "../../interfaces/User";
@@ -655,6 +655,37 @@ async function DeleteRecommend(id: number): Promise<void> {
   }
 }
 
+async function ExportTripToTemplate(tripId: number): Promise<string> {
+  const token = localStorage.getItem("token");
+  const tokenType = localStorage.getItem("token_type");
+
+  if (!token || !tokenType) {
+    throw new Error("ยังไม่ได้ login หรือ token หาย");
+  }
+
+  try {
+    const response = await axios.post(`${apiUrl}/trips/${tripId}/export`, 
+      { trip_id: tripId }, // ✅ ส่ง JSON ไปด้วย
+      {
+        headers: {
+          Authorization: `${tokenType} ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const url = response.data.url || response.data.download_url;
+    if (!url) {
+      throw new Error("ไม่พบลิงก์สำหรับดาวน์โหลดเอกสาร");
+    }
+
+    return url;
+  } catch (error) {
+    throw new Error((error as AxiosError).message);
+  }
+}
+
+
 
 export {
     SignInUser,
@@ -711,4 +742,5 @@ export {
     PostGroq,
     VerifyOTP,
     SendOTP,
+    ExportTripToTemplate,
 }
