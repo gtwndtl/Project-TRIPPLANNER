@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"regexp"
+
 	"strconv"
 	"strings"
 
@@ -233,7 +233,7 @@ func (ctrl *ShortestPathController) DeleteShortestPath(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ลบข้อมูลสำเร็จ"})
 }
 
-var reBoldName = regexp.MustCompile(`\*{2}(.+?)\*{2}`)
+
 
 func looksLikeCheckout(text string) bool {
 	txt := strings.ToLower(text)

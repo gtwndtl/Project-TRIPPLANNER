@@ -14,9 +14,10 @@ type DistanceController struct {
 	PostgisDB *gorm.DB
 }
 
-func NewDistanceController(mysqlDB *gorm.DB) *DistanceController {
+func NewDistanceController(mysqlDB, postgisDB *gorm.DB) *DistanceController {
 	return &DistanceController{
-		MysqlDB: mysqlDB,
+		MysqlDB:   mysqlDB,
+		PostgisDB: postgisDB,
 	}
 }
 

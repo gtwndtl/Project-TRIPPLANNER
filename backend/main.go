@@ -50,7 +50,7 @@ func main() {
 	landmarkCtrl := Landmark.NewLandmarkController(db, postgresDB)
 	restaurantCtrl := Restaurant.NewRestaurantController(db, postgresDB)
 	userCtrl := User.NewUserController(db)
-	distanceCtrl := &Distance.DistanceController{MysqlDB: db, PostgisDB: postgresDB,}
+	distanceCtrl := Distance.NewDistanceController(db, postgresDB)
 	tripsCtrl := Trips.NewTripsController(db)
 	shortestpathCtrl := Shortestpath.NewShortestPathController(db, postgresDB)
 	routeCtrl := &GenTrip.RouteController{}
@@ -77,9 +77,9 @@ func main() {
 
 	// Condition routes
 	r.POST("/conditions", conditionCtrl.Create)
-	r.GET("/conditions", conditionCtrl.GetAll)
+	authorized.GET("/conditions", conditionCtrl.GetAll)
 	r.GET("/conditions/:id", conditionCtrl.GetByID)
-	r.PUT("/conditions/:id", conditionCtrl.Update)
+	authorized.PUT("/conditions/:id", conditionCtrl.Update)
 	r.DELETE("/conditions/:id", conditionCtrl.Delete)
 
 	// Landmark routes
@@ -97,7 +97,7 @@ func main() {
 	authorized.DELETE("/restaurants/:id", restaurantCtrl.Delete)
 
 	// User routes (ยกเว้นสร้าง user และ login ที่ public)
-	r.GET("/users", userCtrl.GetAllUsers)
+	authorized.GET("/users", userCtrl.GetAllUsers)
 	authorized.GET("/users/:id", userCtrl.GetUserByID)
 	authorized.PUT("/users/:id", userCtrl.UpdateUser)
 	authorized.DELETE("/users/:id", userCtrl.DeleteUser)
@@ -111,7 +111,6 @@ func main() {
 	r.GET("/trips/:id", tripsCtrl.GetTripByID)
 	authorized.PUT("/trips/:id", tripsCtrl.UpdateTrip)
 	authorized.DELETE("/trips/:id", tripsCtrl.DeleteTrip)
-	r.POST("/trips/:id/export", tripsCtrl.ExportTripToTemplate)
 
 	// Shortest Path routes
 	r.POST("/shortest-paths", shortestpathCtrl.CreateShortestPath)
@@ -122,11 +121,16 @@ func main() {
 	r.PUT("/shortest-paths/accommodation/bulk", shortestpathCtrl.BulkUpdateAccommodation)
 
 	r.GET("/distances", distanceCtrl.GetDistances)
-	r.GET("/mst", distanceCtrl.GetMST)
+
     r.GET("/gen-route", routeCtrl.GenerateRoute)
 	r.POST("/api/groq", GroqApi.PostGroq)
 	r.GET("/suggest", distanceCtrl.SuggestPlaces)
 	r.GET("/suggest/accommodations", distanceCtrl.SuggestAccommodations)
+	r.GET("/health/components", distanceCtrl.GetComponentsHealth)
+	// 
+	// r.GET("/flow/mincut", distanceCtrl.GetFlowMinCut)
+	r.GET("/mst/byflow",  distanceCtrl.GetMSTByFlow)
+	r.GET("/mst",        distanceCtrl.GetMSTByFlow) // เพิ่มบรรทัดนี้
 
 	// 👉 Review routes
 	r.POST("/reviews", reviewCtrl.Create)
