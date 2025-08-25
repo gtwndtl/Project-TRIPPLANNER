@@ -36,9 +36,8 @@ import type { DefaultOptionType } from "antd/es/select";
 import Select from "antd/es/select";
 import { Button, Empty, message, Modal, Spin, Tabs } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
-import type { ReviewInterface } from "../../interfaces/Review";
 import RateReviewModal from "../../component/review/review";
-
+import { useUserId } from "../../hooks/useUserId";
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
 const SP_TABLE_NAME = "shortestpaths"; // ✅ ตาม GORM struct Shortestpath (ไม่มี underscore)
 
@@ -92,6 +91,8 @@ const TripItinerary: React.FC = () => {
   const navigate = useNavigate();
   const [msg, contextHolder] = message.useMessage();
 
+  const userIdNum = useUserId();
+
   // ===== LocalStorage state sync =====
   const [activeTripId, setActiveTripId] = useState<number | null>(() => {
     const id = localStorage.getItem("TripID");
@@ -139,7 +140,6 @@ const TripItinerary: React.FC = () => {
   // ===== Data states =====
   const [trip, setTrip] = useState<TripInterface | null>(null);
   const [trips, setTrips] = useState<TripInterface[]>([]);
-  const [userIdNum, setUserIdNum] = useState<number>(0);
   const [user, setUser] = useState<any>(null);
   const [userCondition, setUserCondition] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -153,12 +153,6 @@ const TripItinerary: React.FC = () => {
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({});
   const [rowLoadedOnce, setRowLoadedOnce] = useState<Record<string, boolean>>({});
 
-  // ===== User id =====
-  useEffect(() => {
-    const userIdStr = localStorage.getItem("user_id");
-    const num = userIdStr ? parseInt(userIdStr, 10) : 0;
-    setUserIdNum(num);
-  }, []);
 
   const fetchTripsForUser = useCallback(async () => {
     if (!userIdNum || !isLogin) return;
@@ -184,15 +178,12 @@ const TripItinerary: React.FC = () => {
       try {
         const [tripRes, userRes, condRes] = await Promise.all([
           GetTripById(tripId),
-          (async () => {
-            const rawId = localStorage.getItem("id");
-            const id = rawId ? Number(rawId) : 0;
-            return id ? GetUserById(id) : null;
-          })(),
+          userIdNum ? GetUserById(userIdNum) : Promise.resolve(null),
           GetConditionById(tripId),
         ]);
+
         setTrip(tripRes || null);
-        if (userRes) setUser(userRes);
+        setUser(userRes || null);
         setUserCondition(condRes || null);
       } catch (err) {
         console.error("Error refreshing data:", err);
@@ -201,8 +192,9 @@ const TripItinerary: React.FC = () => {
         setLoading(false);
       }
     },
-    [msg]
+    [msg, userIdNum] // ✅ ใส่ userIdNum เป็น dependency
   );
+
 
   useEffect(() => {
     if (activeTripId) {
@@ -516,23 +508,20 @@ const TripItinerary: React.FC = () => {
   const openRateModal = () => setReviewOpen(true);
   const closeRateModal = () => setReviewOpen(false);
 
-  // YYYY-MM-DD แบบ local time
-  const formatDateYYYYMMDD = (d: Date) => {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
 
   const handleSubmitReview = async ({ rating, review }: { rating: number; review: string }) => {
     if (!activeTripId) return;
 
-    const userId = Number(localStorage.getItem("user_id") || 0);
-    const payload: ReviewInterface = {
-      Day: formatDateYYYYMMDD(new Date()),
-      Rate: rating,
+    const payload = {
+      Day: new Date().toISOString(),
+      Rate: Number(rating),
       TripID: Number(activeTripId),
-      Comment: review?.trim() || undefined,
-      User_id: userId || undefined,
+      Comment: review?.trim(),
+      User_id: userIdNum,
     };
+
+    // 👇 log payload ก่อนส่งจริง
+    console.log("Review payload before POST:", payload);
 
     try {
       setReviewSubmitting(true);
@@ -540,11 +529,13 @@ const TripItinerary: React.FC = () => {
       message.success("ขอบคุณสำหรับการให้คะแนน!");
       closeRateModal();
     } catch (e: any) {
+      console.error("CreateReview error:", e);
       message.error(e?.message || "ส่งรีวิวไม่สำเร็จ");
     } finally {
       setReviewSubmitting(false);
     }
   };
+
 
   // ===== Tabs =====
   const tabItems = useMemo(() => {

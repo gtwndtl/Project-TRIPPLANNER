@@ -17,8 +17,7 @@ import {
 } from "../../services/https";
 
 // ====== User Id from localStorage (เหมือนโค้ดแรก) ======
-const userIdStr = localStorage.getItem('id');
-const userIdNum = userIdStr ? parseInt(userIdStr, 10) : 0;
+import { useUserId } from "../../hooks/useUserId";
 
 // =====================
 // Helpers
@@ -163,6 +162,7 @@ type Msg =
   | { id: string; role: "ai"; text: string; isTripPlan: true };
 
 const TripChat = () => {
+  const userIdNum = useUserId();
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(false);

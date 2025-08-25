@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Rate, Input, Form } from "antd";
+import { Modal, Rate, Input } from "antd";
+import "./review.css";          // มี .btn-secondary อยู่แล้วจากไฟล์หลักก็ได้
 
 interface Props {
   open: boolean;
   onCancel: () => void;
   onSubmit: (val: { rating: number; review: string }) => Promise<void> | void;
   loading?: boolean;
+  tripId?: number;
   tripName?: string;
   initialRating?: number;
   initialReview?: string;
@@ -16,6 +18,7 @@ const RateReviewModal: React.FC<Props> = ({
   onCancel,
   onSubmit,
   loading = false,
+  tripId,
   tripName,
   initialRating = 0,
   initialReview = "",
@@ -36,32 +39,54 @@ const RateReviewModal: React.FC<Props> = ({
 
   return (
     <Modal
-      title={tripName ? `ให้คะแนนทริป: ${tripName}` : "ให้คะแนนทริป"}
+      className="cupertino-review-modal"
+      title={tripName ? `ให้คะแนนทริป: ${tripName}${tripId ? ` (#${tripId})` : ""}` : "ให้คะแนนทริป"}
       open={open}
       onCancel={onCancel}
-      onOk={handleOk}
-      okText="ส่งคะแนน"
-      cancelText="ยกเลิก"
-      okButtonProps={{ disabled: rating < 1, loading }}
+      footer={
+        <div className="crm-footer">
+          <button
+            type="button"
+            className="btn-secondary compact"
+            onClick={onCancel}
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            className="btn-secondary compact primary"
+            onClick={handleOk}
+            disabled={rating < 1 || loading}
+          >
+            {loading ? "กำลังส่ง…" : "ส่งคะแนน"}
+          </button>
+        </div>
+      }
       centered
-      getContainer={() => document.body}
       destroyOnClose
+      maskClosable
     >
-      <Form layout="vertical">
-        <Form.Item label="ให้ดาว">
-          <Rate value={rating} onChange={setRating} />
-        </Form.Item>
-        <Form.Item label="รีวิว (ไม่บังคับ)">
-          <Input.TextArea
-            value={review}
-            onChange={(e) => setReview(e.target.value)}
-            rows={4}
-            maxLength={1000}
-            showCount
-            placeholder="เล่าให้หน่อยว่าทริปนี้เป็นยังไงบ้าง…"
-          />
-        </Form.Item>
-      </Form>
+      <div className="crm-body center">
+        <div className="crm-section">
+          <label className="crm-label">ให้ดาว</label>
+          <Rate value={rating} onChange={setRating} className="crm-rate" />
+          <div className="crm-hint">แตะเพื่อเลือก 1–5 ดาว</div>
+        </div>
+
+        <div className="crm-section">
+          <label className="crm-label">รีวิว (ไม่บังคับ)</label>
+          <div className="crm-field crm-textarea">
+            <Input.TextArea
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              showCount
+              placeholder="เล่าสั้น ๆ ถึงสิ่งที่ชอบ หรืออยากให้ปรับปรุง…"
+            />
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 };

@@ -23,6 +23,7 @@ const Navbar = () => {
     if (key === "logout") {
       localStorage.clear();
       setIsLogin(false);
+      window.dispatchEvent(new Event("UserChanged"));
       messageApi.open({
         type: 'success',
         content: 'ออกจากระบบสำเร็จ',

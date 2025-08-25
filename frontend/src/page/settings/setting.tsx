@@ -11,6 +11,7 @@ import AccountInfo from "../../component/setting/account/account";
 import Preferences from "../../component/setting/preferences/preferences";
 import ChangePassword from "../../component/setting/account/change-assword/change-password.tsx";
 
+import { useUserId } from "../../hooks/useUserId";
 
 const Setting = () => {
   const [user, setUser] = useState<UserInterface | null>(null);
@@ -20,11 +21,14 @@ const Setting = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  // state เปิดฟอร์มเปลี่ยนรหัสผ่าน
+  // เปิด/ปิดฟอร์มเปลี่ยนรหัสผ่าน
   const [showChangePwd, setShowChangePwd] = useState(false);
 
   // กำหนด active tab จาก query string (?tab=account|profile|preferences)
   const activeKey = params.get("tab") || "account";
+
+  // ✅ ดึง userId แบบ reactive (จะอัปเดตอัตโนมัติเมื่อ localStorage id เปลี่ยน)
+  const userId = useUserId();
 
   // คำนวณอายุจากวันเกิด
   const age = useMemo(() => {
@@ -42,20 +46,21 @@ const Setting = () => {
     return a;
   }, [user?.Birthday]);
 
+  // ✅ โหลดข้อมูลผู้ใช้ทุกครั้งที่ userId เปลี่ยน
   useEffect(() => {
-    const rawId = localStorage.getItem("id");
-    const id = rawId ? Number(rawId) : NaN;
-
-    if (!rawId || Number.isNaN(id)) {
-      msg.error("ยังไม่ได้เข้าสู่ระบบ");
-      setTimeout(() => navigate("/login"), 800);
+    // ถ้ายังไม่ login → เด้งไปหน้า login
+    if (!userId) {
+      setUser(null);
       setLoading(false);
-      return;
+      msg.error("ยังไม่ได้เข้าสู่ระบบ");
+      const t = setTimeout(() => navigate("/login"), 800);
+      return () => clearTimeout(t);
     }
 
+    setLoading(true);
     (async () => {
       try {
-        const result = await GetUserById(id);
+        const result = await GetUserById(userId);
         if (!result?.ID) {
           msg.error("ไม่พบข้อมูลผู้ใช้");
           setTimeout(() => navigate("/"), 1000);
@@ -69,7 +74,7 @@ const Setting = () => {
         setLoading(false);
       }
     })();
-  }, [msg, navigate]);
+  }, [userId, msg, navigate]);
 
   const items: TabsProps["items"] = [
     {

@@ -1,0 +1,178 @@
+/* ===== โครงพื้นฐาน (เก็บสไตล์ Cupertino ไว้) ===== */
+.cupertino-review-modal {
+  --cupertino-text: #1d1d1f;
+  --cupertino-subtle: #6e6e73;
+  --cupertino-bg: #ffffff;
+  --cupertino-surface: #f5f5f7;
+  --cupertino-border: #e5e5ea;
+  --cupertino-accent: #0a84ff;
+  --radius: 14px;
+}
+
+.cupertino-review-modal .ant-modal-content {
+  border-radius: var(--radius);
+  background: var(--cupertino-bg);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+/* ===== Header: จัดกึ่งกลางหัวข้อ/ซับไตเติล ===== */
+.cupertino-review-modal .ant-modal-header {
+  border-bottom: 1px solid var(--cupertino-border);
+  background: var(--cupertino-bg);
+  padding: 14px 18px;
+}
+.cupertino-review-modal .ant-modal-title {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* center title */
+}
+.crm-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;          /* center content */
+  text-align: center;
+}
+.crm-title-text {
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--cupertino-text);
+  letter-spacing: -0.01em;
+}
+.crm-subtitle {
+  font-size: 13px;
+  color: var(--cupertino-subtle);
+}
+
+/* ปุ่มปิดยังอยู่มุมขวา */
+.cupertino-review-modal .ant-modal-close { top: 10px; }
+.cupertino-review-modal .ant-modal-close-x { width: 32px; height: 32px; border-radius: 8px; }
+.cupertino-review-modal .ant-modal-close:hover { background: var(--cupertino-surface); }
+
+/* ===== Body: จัดกึ่งกลางทุกอย่าง ===== */
+.cupertino-review-modal .ant-modal-body {
+  padding: 16px 18px 10px;
+}
+.crm-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;      /* center children */
+  gap: 14px;
+}
+.crm-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;      /* center label, stars, hint */
+  gap: 6px;
+}
+.crm-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cupertino-text);
+  text-align: center;       /* center label text */
+}
+
+/* ดาวอยู่กึ่งกลางแน่นอน */
+.crm-rate {
+  font-size: 28px;
+  color: var(--cupertino-accent);
+  margin-top: 2px;
+}
+.crm-rate .ant-rate-star { transition: transform .08s ease; }
+.crm-rate .ant-rate-star:hover { transform: translateY(-1px) scale(1.04); }
+
+.crm-hint {
+  font-size: 12px;
+  color: var(--cupertino-subtle);
+  text-align: center;
+}
+
+/* กล่องรีวิวกึ่งกลาง แต่ข้อความด้านในยังพิมพ์ชิดซ้ายเพื่อความอ่านง่าย */
+.crm-field {
+  width: 100%;
+  max-width: 520px;         /* จำกัดความกว้างให้อ่านสบาย */
+}
+.crm-textarea .ant-input,
+.crm-textarea textarea.ant-input {
+  background: var(--cupertino-surface);
+  border: 1px solid var(--cupertino-border);
+  border-radius: 12px;
+  color: var(--cupertino-text);
+}
+.crm-textarea .ant-input:focus,
+.crm-textarea textarea.ant-input:focus {
+  border-color: var(--cupertino-accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+/* ===== Footer: ชิดขวาสุดตามต้องการ ===== */
+.cupertino-review-modal .ant-modal-footer {
+  border-top: 1px solid var(--cupertino-border);
+  padding: 12px 18px 16px;
+  display: flex;
+  justify-content: flex-end;   /* ปุ่มชิดขวา */
+  gap: 8px;
+}
+
+/* ปุ่ม Primary/Default (โทน iOS) */
+.cupertino-review-modal .ant-btn-primary {
+  background: var(--cupertino-accent);
+  border-color: var(--cupertino-accent);
+  border-radius: 11px;
+  font-weight: 700;
+}
+.cupertino-review-modal .ant-btn-primary:hover { filter: brightness(1.03); }
+.cupertino-review-modal .ant-btn-primary:disabled {
+  background: #b9d8ff; border-color: #b9d8ff; color: rgba(255,255,255,0.9);
+}
+.cupertino-review-modal .ant-btn-default {
+  border-radius: 11px;
+  background: var(--cupertino-surface);
+  border-color: var(--cupertino-border);
+  color: var(--cupertino-text);
+}
+.cupertino-review-modal .ant-btn-default:hover { background: #ebebef; }
+
+/* ฟุตเตอร์ของโมดอล – ปุ่มชิดขวา */
+.crm-footer {
+  display: flex;
+  justify-content: flex-end;  /* ปุ่มไปฝั่งขวาสุด */
+  gap: 8px;
+}
+
+/* ใช้ปุ่มเดิม แต่ให้เหมาะกับ footer (ไม่เต็ม 100%) */
+.btn-secondary.compact {
+  width: auto;                /* แทน 100% */
+  min-width: 96px;
+  height: 38px;
+  padding: 0 14px;
+}
+
+/* ปุ่ม primary โทนเดียวกับธีม (ปรับตามที่คุณต้องการ) */
+.btn-secondary.primary {
+  background: #1677ff;        /* หรือใช้ var(--accent) ของธีม */
+  color: #fff;
+  border: 1px solid #1677ff;
+}
+.btn-secondary.primary:hover {
+  background: #1a7fff;
+  border-color: #1a7fff;
+}
+
+/* จัดกลางคอนเทนต์ในบอดีตามที่ตั้งใจ */
+.crm-body.center,
+.crm-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+
+/* Responsive */
+@media (max-width: 480px) {
+  .cupertino-review-modal .ant-modal-body { padding: 14px 14px 8px; }
+  .cupertino-review-modal .ant-modal-footer { padding: 10px 14px 14px; }
+  .crm-rate { font-size: 26px; }
+}
