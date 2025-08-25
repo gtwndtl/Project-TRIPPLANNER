@@ -29,12 +29,13 @@ import {
   GetAllTrips,
   DeleteTrip,
   CreateReview,
+  GetAllReviews,
 } from "../../services/https";
 import type { TripInterface } from "../../interfaces/Trips";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { DefaultOptionType } from "antd/es/select";
 import Select from "antd/es/select";
-import { Button, Empty, message, Modal, Spin, Tabs } from "antd";
+import { Button, Empty, message, Modal, Spin, Tabs, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 import RateReviewModal from "../../component/review/review";
 import { useUserId } from "../../hooks/useUserId";
@@ -152,6 +153,28 @@ const TripItinerary: React.FC = () => {
   const [rowOptions, setRowOptions] = useState<Record<string, DefaultOptionType[]>>({});
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({});
   const [rowLoadedOnce, setRowLoadedOnce] = useState<Record<string, boolean>>({});
+
+  const [reviewedTripIds, setReviewedTripIds] = useState<Set<number>>(new Set());
+
+  // โหลดเมื่อ login + มี userId + หลังโหลด trips เสร็จ
+  useEffect(() => {
+    if (!isLogin || !userIdNum) return;
+
+    (async () => {
+      try {
+        const reviews: any[] = await GetAllReviews();
+
+        const myReviews = reviews.filter(
+          (r) => Number(r.User_id) === Number(userIdNum)
+        );
+
+        setReviewedTripIds(new Set(myReviews.map((r) => Number(r.TripID))));
+      } catch (e) {
+        console.error("fetch reviews failed:", e);
+      }
+    })();
+  }, [isLogin, userIdNum, trips.length]);
+
 
 
   const fetchTripsForUser = useCallback(async () => {
@@ -527,6 +550,7 @@ const TripItinerary: React.FC = () => {
       setReviewSubmitting(true);
       await CreateReview(payload);
       message.success("ขอบคุณสำหรับการให้คะแนน!");
+      setReviewedTripIds((prev) => new Set([...prev, Number(activeTripId)]));
       closeRateModal();
     } catch (e: any) {
       console.error("CreateReview error:", e);
@@ -548,7 +572,10 @@ const TripItinerary: React.FC = () => {
           <>
             {trips.length > 0 ? (
               trips.map((t, idx) => {
-                const isActive = Number(t.ID) === Number(activeTripId);
+                const idNum = Number(t.ID);
+                const isActive = idNum === Number(activeTripId);
+                const hasReviewed = reviewedTripIds.has(idNum); // 👈 เช็คว่าทริปนี้เคยรีวิวแล้วหรือยัง
+
                 return (
                   <div key={t.ID ?? idx}>
                     <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
@@ -556,29 +583,39 @@ const TripItinerary: React.FC = () => {
                         <p
                           className="title"
                           style={{ cursor: "pointer" }}
-                          onClick={() => handleViewTrip(Number(t.ID))}
+                          onClick={() => handleViewTrip(idNum)}
                         >
                           {idx + 1} - {t.Name}
                         </p>
                       </div>
                       <div className="itin-cardrow-right">
-                        <button
-                          type="button"
-                          className="btn-icon rate"
-                          aria-label="Rate trip"
-                          onClick={openRateModal}
-                        >
-                          <StarFilled />
-                        </button>
+                        {/* ซ่อนปุ่ม Review ถ้าเคยรีวิวแล้ว */}
+                        {!hasReviewed && (
+                          <Tooltip title="ให้คะแนนทริป">
+                            <button
+                              type="button"
+                              className="btn-icon rate"
+                              aria-label="Rate trip"
+                              onClick={() => {
+                                if (!isActive) handleViewTrip(idNum);
+                                openRateModal();
+                              }}
+                            >
+                              <StarFilled />
+                            </button>
+                          </Tooltip>
+                        )}
 
-                        <button
-                          type="button"
-                          className="btn-icon danger"
-                          aria-label="Delete trip"
-                          onClick={() => confirmDeleteTrip(t)}
-                        >
-                          <DeleteOutlined />
-                        </button>
+                        <Tooltip title="ลบ">
+                          <button
+                            type="button"
+                            className="btn-icon danger"
+                            aria-label="Delete trip"
+                            onClick={() => confirmDeleteTrip(t)}
+                          >
+                            <DeleteOutlined />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
@@ -609,7 +646,8 @@ const TripItinerary: React.FC = () => {
       ),
     });
     return items;
-  }, [isLogin, trips, summary, handleViewTrip, activeTripId, fetchTripsForUser, navigate]);
+  }, [isLogin, trips, summary, handleViewTrip, activeTripId, navigate, reviewedTripIds]);
+
 
   const onTabsChange = (key: string) => {
     if (key === "overview" && editingDay !== null) {

@@ -71,8 +71,8 @@ const Navbar = () => {
       <div className="navbar-right">
         <nav className="navbar-links">
           <Link to="/">Home</Link>
-          <Link to="/explore">Explore</Link>
-          <Link to="/trips">Trips</Link>
+          <Link to="/trip-chat">Chat</Link>
+          <Link to="/itinerary/explore">Explore</Link>
           <Link to="/help">Help</Link>
         </nav>
 

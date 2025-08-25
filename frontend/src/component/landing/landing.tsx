@@ -39,15 +39,12 @@ const Landing = () => {
                       Let our AI create a personalized itinerary based on your interests and preferences.
                     </h2>
                   </div>
-
-                  <Button
-                    type="primary"
-                    size="large"
-                    className="landing-hero-button"
-                    onClick={() => navigate("/trip-chat")}
-                  >
-                    Get Started
-                  </Button>
+                  <button className="button" onClick={() => navigate("/trip-chat")}>
+                    <span className="button_lg">
+                      <span className="button_sl"></span>
+                      <span className="button_text">Create a new Trip</span>
+                    </span>
+                  </button>
                 </div>
               </div>
             ))}

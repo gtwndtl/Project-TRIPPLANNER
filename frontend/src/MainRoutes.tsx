@@ -10,6 +10,8 @@ import Setting from "./page/settings/setting";
 import TripItinerary from "./page/trip-itinerary/trip-itinerary";
 import AppLayout from "./layout/AppLayout";
 import AuthLayout from "./layout/AuthLayout";
+import TripItineraryRecommend from "./page/itinerary-recommend/itinerary-recommend";
+import TripExplore from "./page/trip-explore/trip-explore";
 
 const router = createBrowserRouter([
   {
@@ -19,6 +21,8 @@ const router = createBrowserRouter([
       { path: "/trip-chat", element: <TripPlannerChat /> },
       { path: "/settings", element: <Setting /> },
       { path: "/itinerary", element: <TripItinerary /> },
+      { path: "/itinerary/recommend/:tripId", element: <TripItineraryRecommend /> },
+      { path: "/itinerary/explore", element: <TripExplore /> },
     ],
   },
   {
