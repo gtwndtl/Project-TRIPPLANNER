@@ -205,8 +205,25 @@ func loadRestaurants(db *gorm.DB) {
 		db.Create(&data)
 	}
 }
+// ฟังก์ชันช่วย: เช็คว่ามี table อยู่ใน Postgres ไหม
+func tableExists(tableName string) bool {
+	var exists bool
+	query := `
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_schema = 'public' 
+			AND table_name = ?
+		);`
+	dbPostgres.Raw(query, tableName).Scan(&exists)
+	return exists
+}
 
 func loadAccommodationGIS() {
+	// เช็คว่ามี table ไหม ถ้ามีให้ลบข้อมูลเก่าออก
+	if tableExists("accommodation_gis") {
+		dbPostgres.Exec("TRUNCATE TABLE accommodation_gis RESTART IDENTITY CASCADE")
+	}
+
 	var accommodations []entity.Accommodation
 	dbSqlite.Find(&accommodations)
 	for _, acc := range accommodations {
@@ -217,9 +234,14 @@ func loadAccommodationGIS() {
 		}
 		dbPostgres.Create(&gis)
 	}
+	fmt.Println("✅ Accommodation GIS data reloaded")
 }
 
 func loadLandmarkGIS() {
+	if tableExists("landmark_gis") {
+		dbPostgres.Exec("TRUNCATE TABLE landmark_gis RESTART IDENTITY CASCADE")
+	}
+
 	var landmarks []entity.Landmark
 	dbSqlite.Find(&landmarks)
 	for _, lm := range landmarks {
@@ -230,9 +252,14 @@ func loadLandmarkGIS() {
 		}
 		dbPostgres.Create(&gis)
 	}
+	fmt.Println("✅ Landmark GIS data reloaded")
 }
 
 func loadRestaurantGIS() {
+	if tableExists("restaurant_gis") {
+		dbPostgres.Exec("TRUNCATE TABLE restaurant_gis RESTART IDENTITY CASCADE")
+	}
+
 	var restaurants []entity.Restaurant
 	dbSqlite.Find(&restaurants)
 	for _, r := range restaurants {
@@ -243,4 +270,5 @@ func loadRestaurantGIS() {
 		}
 		dbPostgres.Create(&gis)
 	}
+	fmt.Println("✅ Restaurant GIS data reloaded")
 }
