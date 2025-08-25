@@ -6,6 +6,7 @@ import type { UserInterface } from '../../../interfaces/User';
 import { useNavigate } from 'react-router-dom';
 
 const RegisterPage = () => {
+    const [messageApi, contextHolder] = message.useMessage();
     const [form] = Form.useForm();
     const navigate = useNavigate();
     const onFinish = async (values: any) => {
@@ -15,16 +16,25 @@ const RegisterPage = () => {
                 Password: values.password,
             };
             await CreateUser(newUser);
-            message.success('สมัครสมาชิกสำเร็จ!');
+            messageApi.open({
+                type: 'success',
+                content: 'สมัครสมาชิกสำเร็จ',
+                duration: 1.2,
+                onClose: () => navigate('/login'),
+            });
             form.resetFields();
         } catch (error) {
-            message.error('ไม่สามารถสมัครสมาชิกได้');
+            messageApi.open({
+                type: 'error',
+                content: 'เกิดข้อผิดพลาด: ไม่สามารถสมัครสมาชิกได้',
+            });
             console.error('Registration Error:', error);
         }
     };
 
     return (
         <div className="register-container">
+            {contextHolder}
             <div className="login-page">
                 <motion.div
                     className="login-right"
