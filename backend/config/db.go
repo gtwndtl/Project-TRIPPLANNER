@@ -55,6 +55,8 @@ func SetupDatabase() {
 		&entity.Shortestpath{},
 		&entity.Trips{},
 		&entity.User{},
+		&entity.Review{},
+		&entity.Recommend{},
 	)
 	if err != nil {
 		panic(err)
