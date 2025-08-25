@@ -1,157 +1,274 @@
-.chat-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 106px);
-  width: 100%;
-  padding: 16px;
-  box-sizing: border-box;
-  background-color: #f9f0f0;
+/* =========================================
+   CONFIG
+========================================= */
+:root {
+    /* ปรับตามความสูงจริงของ navbar */
+    --navbar-height: 65px;
+    --bg: #fff;
+    --ink: #111418;
+    --muted: #60758a;
+    --surface: #f0f2f5;
+    --brand: #0d80f2;
+    --radius-lg: 12px;
 }
 
-.chat-header {
-  margin-bottom: 12px;
+/* =========================================
+   ROOT
+========================================= */
+.trip-chat-root {
+    height: calc(100vh - var(--navbar-height));
+    /* พอดีจอใต้ navbar */
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+    /* กันทั้งหน้าเลื่อน */
 }
 
-.chat-header h3 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
+/* ไอคอน/อวาตาร์เล็ก ๆ ที่อาจใช้ */
+.trip-chat-bell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
 }
 
-.chat-header p {
-  font-size: 14px;
-  color: #777;
-  margin: 0;
+.trip-chat-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: center/cover no-repeat;
 }
 
-.chat-messages {
-  flex: 1;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE 10+ */
-}
-
-.chat-messages::-webkit-scrollbar {
-  display: none;
-  /* Chrome, Safari */
-}
-
-.chat-message {
-  max-width: 70%;
-  box-sizing: border-box;
-  padding: 12px 16px;
-  border-radius: 16px;
-  font-size: 14px;
-  line-height: 1.6;
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: pre-wrap;
-  display: inline-block;
-}
-
-.user-message {
-  align-self: flex-end;
-  background-color: #cce5ff;
-  color: #000;
-}
-
-.bot-message-wrapper {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.bot-message {
-  align-self: flex-start;
-  background-color: #e9ecef;
-  color: #333;
-}
-
-.chat-input-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 16px;
-  border-radius: 20px;
-  background-color: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  gap: 12px;
-  margin-top: auto;
-}
-
-/* ฝั่งซ้าย: Input และ Suggestions */
-.chat-input-left {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  gap: 8px;
-}
-
-/* Input */
-.chat-input-left .ant-input {
-  font-size: 15px;
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-}
-
-/* Suggestions */
-.chat-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chat-suggestion-tag {
-  cursor: pointer;
-  border-radius: 20px;
-  font-size: 14px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  background-color: #ffffff;
-  border-color: #D9D9D9;
-  color: #595959;
-  transition: all 0.2s ease;
-}
-.chat-suggestion-tag:hover {
-  background-color: #f5f5f5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  color: #333;
-  transform: scale(1.03);
-  transition: all 0.2s ease;
+.trip-chat-avatar.size-40 {
+    width: 40px;
+    height: 40px;
 }
 
 
-.chat-suggestion-tag:active {
-  background-color: #f0f0f0;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-  transform: scale(0.97);
+
+/* =========================================
+   MAIN CHAT (ขวา)
+========================================= */
+.trip-chat-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    /* ให้ลูก overflow ได้ */
 }
 
-
-.chat-input-send {
-  display: flex;
-  height: 100%;
-  align-items: center;
+/* แถบหัวข้อติดบน */
+.trip-chat-titlebar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 16px;
+    background: var(--bg);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-.chat-suggestion-icon {
-  font-size: 12px;
-  margin-right: 5px;
-  color: #000000;
+.trip-chat-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ink);
 }
 
+/* โซนรายการข้อความ (สกรอลล์เฉพาะส่วนนี้) */
+.trip-chat-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 4px 0;
+    scroll-behavior: smooth;
+}
 
-.chat-input-send .ant-btn {
-  min-width: 80px;
-  height: 40px;
-  font-weight: 500;
-  border-radius: 16px;
+/* แถวข้อความ */
+.trip-chat-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.trip-chat-row.right {
+    justify-content: flex-end;
+}
+
+/* กลุ่มบับเบิล */
+.trip-chat-bubble-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 360px;
+}
+
+.trip-chat-bubble-group.left {
+    align-items: flex-start;
+}
+
+.trip-chat-bubble-group.right {
+    align-items: flex-end;
+}
+
+/* ผู้เขียน */
+.trip-chat-author {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.trip-chat-author.right {
+    width: 100%;
+    text-align: right;
+}
+
+/* บับเบิลข้อความ */
+.trip-chat-bubble {
+    padding: 10px 14px;
+    border-radius: var(--radius-lg);
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.trip-chat-bubble.ai {
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.typing {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.typing span {
+    width: 6px;
+    height: 6px;
+    background: #60758a;
+    border-radius: 50%;
+    display: inline-block;
+    animation: blink 1.4s infinite both;
+}
+
+.typing span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+    0% {
+        opacity: .2;
+        transform: translateY(0);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(-4px);
+    }
+
+    100% {
+        opacity: .2;
+        transform: translateY(0);
+    }
+}
+
+.trip-chat-bubble.user {
+    background: var(--brand);
+    color: #fff;
+}
+
+/* =========================================
+   COMPOSER (กล่องพิมพ์ – ติดล่าง)
+========================================= */
+.trip-chat-composer {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.trip-chat-inputwrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 48px;
+    padding: 6px 8px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+}
+
+.trip-chat-input {
+    flex: 1;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 16px;
+    padding: 0 8px;
+}
+
+.trip-chat-input::placeholder {
+    color: var(--muted);
+}
+
+.trip-chat-inputbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.trip-chat-inputbtn:hover {
+    color: var(--ink);
+}
+
+.trip-chat-inputbtn svg {
+    transform: rotate(45deg);
+}
+
+.trip-chat-inputbtn:hover {
+    opacity: .85;
+}
+
+.trip-chat-inputbtn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+@media (max-width: 980px) {
+    .trip-chat-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-chat-sidebar {
+        order: 2;
+    }
+
+    .trip-chat-main {
+        order: 1;
+    }
 }

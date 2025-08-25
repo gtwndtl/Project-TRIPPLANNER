@@ -1,16 +1,11 @@
-import "./home.css";
-import LandingPage from "../../component/landing/landing";
-import Head from "../../navbar/head";
+import Landing from '../../component/landing/landing'
 
 const Home = () => {
-  return (
-    <div className="home-container">
-      <div className="head-container">
-        <Head />
-      </div>
-      <LandingPage />
-    </div>
-  );
-};
+    return (
+        <div>
+            <Landing />
+        </div>
+    )
+}
 
-export default Home;
+export default Home

@@ -1,0 +1,172 @@
+/* ============= Base ============= */
+.setting-root {
+  min-height: calc(100vh - 65px); /* ถ้ามี navbar สูง 65px */
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 24px 40px;
+}
+
+.setting-content {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============= Titlebar & Tabs ============= */
+.setting-titlebar {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.setting-title {
+  color: #111418;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.setting-tabs {
+  display: flex;
+  border-bottom: 1px solid #dbe0e6;
+  gap: 32px;
+  padding: 0 16px;
+}
+
+.setting-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0 13px;
+  border-bottom: 3px solid transparent;
+  color: #60758a;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+}
+.setting-tab:hover { color: #111418; }
+.setting-tab--active {
+  border-bottom-color: #111418;
+  color: #111418;
+}
+
+/* ============= Ant Tabs alignment ============= */
+.setting-tabs-antd .ant-tabs-nav {
+  margin: 0 16px;                 /* ระนาบเดียวกับ title/rows */
+}
+
+.setting-tabs-antd .ant-tabs-nav::before {
+  border-bottom: 1px solid #dbe0e6; /* เส้นใต้แถบแท็บ */
+}
+
+.setting-tabs-antd .ant-tabs-tab {
+  padding: 14px 0 13px;           /* ให้สูงเท่าดีไซน์ */
+}
+
+.setting-tabs-antd .ant-tabs-tab-btn {
+  color: #60758a;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.setting-tabs-antd .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #000000!important;
+}
+
+.setting-tabs-antd .ant-tabs-ink-bar {
+  height: 3px;                    /* ความหนาเส้น active */
+  background: #111418;
+  border-radius: 2px;
+}
+
+/* เว้นช่องระหว่างแท็บกับเนื้อหาให้พอดี */
+.setting-tabs-antd .ant-tabs-content-holder {
+  padding-top: 8px;
+}
+/* ============= Sections ============= */
+.setting-section-title {
+  color: #111418;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  padding: 16px 16px 8px;
+}
+
+/* ============= Rows ============= */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  min-height: 56px;
+  background: #fff;
+  justify-content: space-between;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.setting-row-label {
+  color: #111418;
+  font-size: 16px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-row-value {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-row-value p {
+  color: #111418;
+  font-size: 16px;
+}
+
+/* ============= Controls ============= */
+.setting-select {
+  min-width: 120px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f0f2f5;
+  color: #111418;
+  font-size: 14px;
+  outline: none;
+}
+
+.setting-select:focus {
+  border-color: #cfd6dd;
+}
+
+.setting-chip-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f0f2f5;
+  color: #111418;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.setting-chip-btn:hover {
+  filter: brightness(0.97);
+}
+
+/* ============= Responsive ============= */
+@media (max-width: 640px) {
+  .setting-title { font-size: 26px; }
+  .setting-tabs { gap: 20px; }
+  .setting-row { padding: 10px 12px; }
+}
