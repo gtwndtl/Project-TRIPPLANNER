@@ -12,6 +12,8 @@ const RegisterPage = () => {
     const onFinish = async (values: any) => {
         try {
             const newUser: UserInterface = {
+                Firstname: values.firstname,
+                Lastname: values.lastname,
                 Email: values.email,
                 Password: values.password,
             };
@@ -37,7 +39,7 @@ const RegisterPage = () => {
             {contextHolder}
             <div className="login-page">
                 <motion.div
-                    className="login-right"
+                    className="register-right"
                     initial={{ x: '100%' }}
                     animate={{ x: 0 }}
                     transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -53,16 +55,36 @@ const RegisterPage = () => {
                     </div>
 
                     <Form className="login-form" form={form} name="register" onFinish={onFinish}>
+                        <Form.Item>
+                            <div style={{ display: "flex", gap: "12px" }}>
+                                <Form.Item
+                                    name="firstname"
+                                    rules={[{ required: true, message: "Please input First Name!" }]}
+                                    style={{ flex: 1, marginBottom: 0 }}
+                                >
+                                    <Input placeholder="First Name" />
+                                </Form.Item>
+
+                                <Form.Item
+                                    name="lastname"
+                                    rules={[{ required: true, message: "Please input Last Name!" }]}
+                                    style={{ flex: 1, marginBottom: 0 }}
+                                >
+                                    <Input placeholder="Last Name" />
+                                </Form.Item>
+                            </div>
+                        </Form.Item>
+
                         <Form.Item
                             name="email"
-                            rules={[{ type: 'email', required: true, message: 'Please input your Email!' }]}
+                            rules={[{ type: 'email', required: true, message: 'Please input Email!' }]}
                         >
                             <Input placeholder="Email" />
                         </Form.Item>
 
                         <Form.Item
                             name="password"
-                            rules={[{ required: true, message: 'Please input your Password!' }]}
+                            rules={[{ required: true, message: 'Please input Password!' }]}
                         >
                             <Input.Password placeholder="Password" />
                         </Form.Item>
@@ -71,7 +93,7 @@ const RegisterPage = () => {
                             name="confirmPassword"
                             dependencies={['password']}
                             rules={[
-                                { required: true, message: 'Please confirm your Password!' },
+                                { required: true, message: 'Please confirm Password!' },
                                 ({ getFieldValue }) => ({
                                     validator(_, value) {
                                         if (!value || getFieldValue('password') === value) {

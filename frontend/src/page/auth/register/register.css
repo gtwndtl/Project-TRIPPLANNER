@@ -25,12 +25,13 @@
     flex: 1;
 }
 
-.register-left {
+/* Right Section (Image) */
+.register-right {
+    position: relative;      /* ต้องมี position ถึงจะใช้ z-index ได้ */
+    z-index: 9999 !important; /* ตัวเลขสูงสุด + !important กัน override */
     background-image: url('../../../assets/night.jpg');
     background-size: cover;
     background-position: center;
-    z-index: 10;
-    margin: 20px;
     border-radius: 16px;
 }
 
@@ -77,7 +78,7 @@
 }
 
 .ant-form-item-explain-error {
-    font-size: 12px;
+    font-size: 11px;
     margin-left: 10px;
     color: #ff4d4f;
 }
@@ -106,6 +107,8 @@
     background-color: rgb(233, 160, 255);
     border: 2px solid #000000;
 }
+
+
 
 @media screen and (max-width: 768px) {
     .register-left {

@@ -14,7 +14,8 @@
     border-radius: 16px;
     font-family: 'Inter', sans-serif;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    overflow: hidden; /* ตัดภาพพื้นหลังให้ตามมุมมน */
+    overflow: hidden;
+    /* ตัดภาพพื้นหลังให้ตามมุมมน */
 }
 
 
@@ -154,4 +155,5 @@
     background-image: url('../../../assets/night.jpg');
     background-size: cover;
     background-position: center;
+    border-radius: 16px;
 }

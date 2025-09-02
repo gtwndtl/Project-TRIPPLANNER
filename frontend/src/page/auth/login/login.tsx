@@ -122,14 +122,14 @@ const LoginPage = () => {
                     <Form className="login-form" name="login" onFinish={onFinish}>
                         <Form.Item
                             name="email"
-                            rules={[{ type: 'email', required: true, message: 'Please input your Email!' }]}
+                            rules={[{ type: 'email', required: true, message: 'Please input Email!' }]}
                         >
                             <Input placeholder="Email" />
                         </Form.Item>
 
                         <Form.Item
                             name="password"
-                            rules={[{ required: true, message: 'Please input your Password!' }]}
+                            rules={[{ required: true, message: 'Please input Password!' }]}
                         >
                             <Input.Password placeholder="Password" />
                         </Form.Item>
