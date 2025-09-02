@@ -64,3 +64,16 @@
   border-radius: 8px;
   object-fit: cover;
 }
+
+/* Hover effect การ์ดแนะนำ */
+.trip-recommendation {
+  transition: all 0.25s ease-in-out;
+  cursor: pointer;
+}
+
+.trip-recommendation:hover {
+  border-color: #d1d5db;          /* เปลี่ยนสีเส้นขอบ */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* เพิ่มเงา */
+  transform: translateY(-2px);   /* ลอยขึ้นเล็กน้อย */
+  background: #fafafa;           /* พื้นหลังอ่อนลงนิด */
+}
