@@ -150,6 +150,10 @@
   border: 1px solid #dbe0e6;
   background-color: #fff;
   padding: 16px;
+
+  /* เพิ่มการจัดตำแหน่งตรงกลาง */
+  align-items: center;
+  text-align: center;
 }
 
 .landing-step-icon { color: #111418; }
@@ -157,7 +161,9 @@
 .landing-step-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  align-items: center;   /* จัดข้อความให้อยู่กึ่งกลางแนวนอน */
+  text-align: center;    /* ให้ข้อความหลายบรรทัดอยู่ตรงกลาง */
 }
 
 .landing-step-title {

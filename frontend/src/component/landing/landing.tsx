@@ -1,6 +1,6 @@
 import "./landing.css";
 import { Button, Carousel } from "antd";
-import { EnvironmentOutlined, CalendarOutlined, DollarOutlined } from "@ant-design/icons";
+import { EnvironmentOutlined, CalendarOutlined, DollarOutlined, CompassOutlined, BranchesOutlined, ScheduleOutlined } from "@ant-design/icons";
 import a1 from "../../assets/a.jpg";
 import a2 from "../../assets/b.jpg";
 import a3 from "../../assets/c.jpg";
@@ -33,16 +33,16 @@ const Landing = () => {
                 >
                   <div className="landing-hero-text">
                     <h1 className="landing-hero-title">
-                      Plan your perfect trip with AI
+                      TRIP PLANNER
                     </h1>
                     <h2 className="landing-hero-subtitle">
-                      Let our AI create a personalized itinerary based on your interests and preferences.
+                      วางแผนการเดินทางโดยง่ายเพียงแค่ระบุสถานที่
                     </h2>
                   </div>
                   <button className="button" onClick={() => navigate("/trip-chat")}>
                     <span className="button_lg">
                       <span className="button_sl"></span>
-                      <span className="button_text">Create a new Trip</span>
+                      <span className="button_text">เริ่มต้นการวางแผน</span>
                     </span>
                   </button>
                 </div>
@@ -56,48 +56,54 @@ const Landing = () => {
           <div className="landing-section-header">
             <h1 className="landing-section-title">How it works</h1>
             <p className="landing-section-description">
-              Our AI trip planner simplifies your travel planning process.
+              เพียงไม่กี่ขั้นตอน ระบบก็สามารถสร้างแผนการเดินทางที่เหมาะสมและพร้อมใช้งานสำหรับคุณ
             </p>
           </div>
 
           <div className="landing-steps-grid">
+            {/* Step 1 */}
             <div className="landing-step-card">
               <div className="landing-step-icon">
-                <EnvironmentOutlined style={{ fontSize: "24px", color: "#111418" }} />
+                <CompassOutlined style={{ fontSize: "28px", color: "#111418" }} />
               </div>
               <div className="landing-step-text">
-                <h2 className="landing-step-title">Choose your destination</h2>
+                <h2 className="landing-step-title">Tell us your destination</h2>
                 <p className="landing-step-description">
-                  Select your desired location from our extensive list of destinations.
+                  แจ้งจุดหมายปลายทางที่คุณต้องการเดินทางไป
                 </p>
               </div>
             </div>
 
+            {/* Step 2 */}
             <div className="landing-step-card">
               <div className="landing-step-icon">
-                <CalendarOutlined style={{ fontSize: "24px", color: "#111418" }} />
+                <BranchesOutlined style={{ fontSize: "28px", color: "#111418" }} />
               </div>
               <div className="landing-step-text">
-                <h2 className="landing-step-title">Set your travel dates</h2>
+                <h2 className="landing-step-title">Algorithm processes your trip</h2>
                 <p className="landing-step-description">
-                  Specify your travel dates to ensure accurate scheduling.
+                  ระบบใช้อัลกอริทึมประมวลผลและสร้างแผนการเดินทางที่เหมาะสม
                 </p>
               </div>
             </div>
 
+            {/* Step 3 */}
             <div className="landing-step-card">
               <div className="landing-step-icon">
-                <DollarOutlined style={{ fontSize: "24px", color: "#111418" }} />
+                <ScheduleOutlined style={{ fontSize: "28px", color: "#111418" }} />
               </div>
               <div className="landing-step-text">
-                <h2 className="landing-step-title">Get a personalized itinerary</h2>
+                <h2 className="landing-step-title">Use your itinerary</h2>
                 <p className="landing-step-description">
-                  Receive a customized itinerary tailored to your interests and budget.
+                  นำแผนการเดินทางไปใช้จริงหรือปรับแก้ตามความต้องการ
                 </p>
               </div>
             </div>
           </div>
         </section>
+
+
+
       </div>
     </div>
   );
