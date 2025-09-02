@@ -46,3 +46,15 @@
   .profile-title { font-size: 16px; }
   .profile-row { padding: 10px 12px; }
 }
+
+.setting-chip-btn--primary {
+  background: #1677ff;
+  color: #fff;
+  border: 1px solid #1677ff;
+}
+
+.setting-chip-btn:disabled,
+.setting-chip-btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -5,27 +5,14 @@ import "./account.css";
 
 type Props = Pick<UserInterface, "Email"> & {
   onChangePassword?: () => void;
-  onDeactivate?: () => void;
 };
 
-const AccountInfo = ({ Email, onChangePassword, onDeactivate }: Props) => {
-  const [messageApi, contextHolder] = message.useMessage();
-
-  const handleDeactivate = () => {
-    const ok = confirm("ต้องการปิดใช้งานบัญชีหรือไม่?");
-    if (ok) {
-      if (onDeactivate) {
-        onDeactivate();
-      } else {
-        messageApi.success("ปิดใช้งานบัญชีแล้ว (demo)");
-      }
-    }
-  };
+const AccountInfo = ({ Email, onChangePassword }: Props) => {
+  const [, contextHolder] = message.useMessage();
 
   return (
     <>
       {contextHolder}
-
       <h3 className="setting-section-title">Account settings</h3>
 
       <div className="setting-row">
@@ -43,15 +30,6 @@ const AccountInfo = ({ Email, onChangePassword, onDeactivate }: Props) => {
             onClick={() => onChangePassword?.()}
           >
             Change
-          </button>
-        </div>
-      </div>
-
-      <div className="setting-row">
-        <p className="setting-row-label">Deactivate account</p>
-        <div className="setting-row-value">
-          <button className="setting-chip-btn" onClick={handleDeactivate}>
-            Deactivate
           </button>
         </div>
       </div>

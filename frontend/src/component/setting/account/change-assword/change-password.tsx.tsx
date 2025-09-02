@@ -119,12 +119,21 @@ const ChangePassword = ({ onClose }: Props) => {
           <p className="setting-row-label"></p>
           <div className="setting-row-value">
             <div className="button-group">
-              <Button onClick={onClose} disabled={submitting}>
+              <button
+                type="button"
+                className="setting-chip-btn"
+                onClick={onClose}
+                disabled={submitting}
+              >
                 Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Save
-              </Button>
+              </button>
+              <button
+                type="submit"
+                className="setting-chip-btn setting-chip-btn--primary"
+                disabled={submitting}
+              >
+                {submitting ? "Saving..." : "Save"}
+              </button>
             </div>
           </div>
         </div>
