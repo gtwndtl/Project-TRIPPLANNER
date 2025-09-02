@@ -14,14 +14,12 @@ import {
   CreateTrip,
   CreateShortestPath,
   CreateCondition,
+  GetUserById,
 } from "../../services/https";
 
 // ====== User Id from localStorage (เหมือนโค้ดแรก) ======
 import { useUserId } from "../../hooks/useUserId";
-
-// =====================
-// Helpers
-// =====================
+import type { UserInterface } from "../../interfaces/User";
 
 // ฟังก์ชัน parse ข้อความแผนทริป LLM เป็น array กิจกรรม {day, startTime, endTime, description}
 function parseTripPlanTextToActivities(text: string) {
@@ -118,9 +116,6 @@ const formatTripPlanText = (text: string) => {
   });
 };
 
-// =====================
-// Save Condition helper (ตามโค้ดแรก: ตรวจค่า, แปลง Day เป็น string, กลืน error)
-// =====================
 const saveTripCondition = async (
   userId: number,
   tripDetails?: { day: string | number; price: number; accommodation: string; landmark: string; style: string; }
@@ -154,9 +149,6 @@ const saveTripCondition = async (
   }
 };
 
-// =====================
-// Main Component (UI ปัจจุบัน + Logic จากโค้ดแรก)
-// =====================
 type Msg =
   | { id: string; role: "ai" | "user"; text: string; isTripPlan?: false }
   | { id: string; role: "ai"; text: string; isTripPlan: true };
@@ -166,7 +158,7 @@ const TripChat = () => {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const [user, setUser] = useState<UserInterface | null>(null);
   const [landmarks, setLandmarks] = useState<LandmarkInterface[]>([]);
   const [messages, setMessages] = useState<Msg[]>([
     {
@@ -207,6 +199,19 @@ const TripChat = () => {
     };
     loadLandmarks();
   }, []);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const data = await GetUserById(userIdNum);
+        setUser(data);
+      } catch (e) {
+        console.error("โหลดข้อมูลผู้ใช้ล้มเหลว", e);
+      }
+    };
+    if (userIdNum) loadUser();
+  }, [userIdNum]); // <-- เดิมเป็น [] เปลี่ยนเป็น [userIdNum]
+
 
   const extractKeywordAndDays = (text: string) => {
     const match = text.match(/อยากไป(.*?)(\d+)\s*วัน/);
@@ -660,8 +665,9 @@ ${landmarkNames}
 
               <div className={`trip-chat-bubble-group ${isUser ? "right" : "left"}`}>
                 <p className={`trip-chat-author ${isUser ? "right" : ""}`}>
-                  {isUser ? "Sophia" : "AI Assistant"}
+                  {isUser ? (user?.Firstname ?? "You") : "AI Assistant"}
                 </p>
+
 
                 <div className={`trip-chat-bubble ${isUser ? "user" : "ai"}`}>
                   {"isTripPlan" in m && m.isTripPlan
