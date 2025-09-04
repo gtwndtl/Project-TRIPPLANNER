@@ -13,6 +13,7 @@ import {
   SaveOutlined,
   CloseOutlined,
   StarFilled,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import "./trip-itinerary.css";
@@ -39,6 +40,10 @@ import { Button, Empty, message, Modal, Spin, Tabs, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 import RateReviewModal from "../../component/review/review";
 import { useUserId } from "../../hooks/useUserId";
+
+import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
+
+
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
 const SP_TABLE_NAME = "shortestpaths"; // ✅ ตาม GORM struct Shortestpath (ไม่มี underscore)
 
@@ -134,7 +139,7 @@ const TripItinerary: React.FC = () => {
 
   useEffect(() => {
     if (!isLogin && !activeTripId) {
-      navigate("/chat-trip", { replace: true });
+      navigate("/trip-chat", { replace: true });
     }
   }, [isLogin, activeTripId, navigate]);
 
@@ -669,17 +674,21 @@ const TripItinerary: React.FC = () => {
 
   const [modal, modalContextHolder] = Modal.useModal();
 
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
   return (
     <div className="itin-root">
       {contextHolder}
       {modalContextHolder}
       <div className="itin-container">
-        <aside className="itin-summary">
+        <aside className="itin-summary no-print">
           <div className="itin-title-row"><p className="itin-page-title">{trip?.Name || "Trip"} ( {trip?.Days} วัน )</p></div>
           <div className="itin-tabs"><Tabs activeKey={tabKey} onChange={onTabsChange} items={tabItems} /></div>
         </aside>
 
-        <main className="itin-content">
+        <main className="itin-content no-print">
           {loading && (
             <div className="itin-loading"><Spin /></div>
           )}
@@ -763,6 +772,27 @@ const TripItinerary: React.FC = () => {
             tripName={trip?.Name}
           />
         </main>
+        {trip && (
+          <TripItineraryPrintSheet
+            trip={trip}
+            condition={userCondition}          // ← ใช้ userCondition ที่มีอยู่ในหน้านี้
+            groupedByDay={groupedByDay}
+            displayName={displayName}
+            getDayHeaderText={getDayHeaderText}
+          />
+        )}
+      </div>
+      <div className="fab-print no-print" aria-hidden={false}>
+        <Tooltip title="พิมพ์เป็น PDF" placement="left">
+          <Button
+            type="primary"
+            shape="circle"
+            size="large"
+            icon={<PrinterOutlined />}
+            aria-label="พิมพ์ PDF"
+            onClick={handlePrint}
+          />
+        </Tooltip>
       </div>
     </div>
   );

@@ -1,6 +1,4 @@
-
-
-/* Container หลัก (คงเหมือนเดิมของคุณ) */
+/* Container หลัก */
 .landing-container {
   display: flex;
   justify-content: center;
@@ -20,35 +18,55 @@
   padding: 20px;
 }
 
+.landing-hero-stage {
+  position: relative; /* ให้ overlay วางทับ Carousel ได้ */
+}
+
 .landing-hero-carousel {
   border-radius: 0;
 }
 
 @media (min-width: 480px) {
   .landing-hero-carousel {
-    border-radius: 12px; /* ให้มุมโค้งเหมือนของเดิมบนจอใหญ่ */
-    overflow: hidden;    /* เพื่อให้ภาพ/เนื้อหาโค้งตาม */
+    border-radius: 12px;
+    overflow: hidden;
   }
 }
 
-/* หนึ่งสไลด์ใน Hero */
+/* สไลด์รูป (ไม่มีข้อความ/ปุ่มในนี้แล้ว) */
 .landing-hero-slide {
-  display: flex;
+  position: relative;
   min-height: 480px;
-  flex-direction: column;
-  gap: 24px;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
 }
 
-@media (min-width: 480px) {
-  .landing-hero-slide {
-    gap: 32px;
-  }
+.landing-hero-slide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: inherit;   /* copy background */
+  filter: blur(2px);     /* ระดับเบลอ */
+  z-index: 0;
+}
+
+
+/* ข้อความ + ปุ่ม วางทับแบบคงที่ */
+.landing-hero-overlay {
+  position: absolute;
+  inset: 0; /* top/right/bottom/left: 0 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 16px;
+  pointer-events: none; /* ป้องกันชนกับลูกศร Carousel */
+}
+
+.landing-hero-overlay .button {
+  pointer-events: auto; /* ให้ปุ่มคลิกได้ */
 }
 
 .landing-hero-text {
@@ -67,9 +85,7 @@
   margin: 0;
 }
 @media (min-width: 480px) {
-  .landing-hero-title {
-    font-size: 3rem; /* 48px */
-  }
+  .landing-hero-title { font-size: 3rem; }
 }
 
 .landing-hero-subtitle {
@@ -79,14 +95,7 @@
   line-height: 1.5;
 }
 @media (min-width: 480px) {
-  .landing-hero-subtitle {
-    font-size: 1rem; /* 16px */
-  }
-}
-
-/* ปุ่ม AntD: แค่เสริม spacing/ตำแหน่ง */
-.landing-hero-button {
-  /* ใช้สไตล์หลักจาก AntD อยู่แล้ว */
+  .landing-hero-subtitle { font-size: 1rem; }
 }
 
 /* ปรับจุด (dots) ของ Carousel ให้เห็นชัดบนพื้นภาพ */
@@ -97,7 +106,7 @@
   background: #fff;
 }
 
-/* ================= How It Works (คงของเดิม) ================= */
+/* ================= How It Works ================= */
 .landing-how-it-works {
   display: flex;
   flex-direction: column;
@@ -150,8 +159,6 @@
   border: 1px solid #dbe0e6;
   background-color: #fff;
   padding: 16px;
-
-  /* เพิ่มการจัดตำแหน่งตรงกลาง */
   align-items: center;
   text-align: center;
 }
@@ -162,8 +169,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  align-items: center;   /* จัดข้อความให้อยู่กึ่งกลางแนวนอน */
-  text-align: center;    /* ให้ข้อความหลายบรรทัดอยู่ตรงกลาง */
+  align-items: center;
+  text-align: center;
 }
 
 .landing-step-title {
@@ -180,7 +187,7 @@
   line-height: 1.5;
 }
 
-/* From Uiverse.io by mrhyddenn */ 
+/* ===== ปุ่ม (ตามของเดิม) ===== */
 .button {
   -moz-appearance: none;
   -webkit-appearance: none;
@@ -209,35 +216,16 @@
   border: 1px solid #7D8082;
   transition: all .15s ease;
 }
-
-.button::before {
-  top: 0;
-  border-bottom-width: 0;
-}
-
-.button::after {
-  bottom: 0;
-  border-top-width: 0;
-}
+.button::before { top: 0; border-bottom-width: 0; }
+.button::after  { bottom: 0; border-top-width: 0; }
 
 .button:active,
-.button:focus {
-  outline: none;
-}
+.button:focus { outline: none; }
 
 .button:active::before,
-.button:active::after {
-  right: 3px;
-  left: 3px;
-}
-
-.button:active::before {
-  top: 3px;
-}
-
-.button:active::after {
-  bottom: 3px;
-}
+.button:active::after { right: 3px; left: 3px; }
+.button:active::before { top: 3px; }
+.button:active::after  { bottom: 3px; }
 
 .button_lg {
   position: relative;
@@ -248,26 +236,20 @@
   overflow: hidden;
   box-shadow: inset 0px 0px 0px 1px transparent;
 }
-
 .button_lg::before {
   content: '';
   display: block;
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 2px;
-  height: 2px;
+  top: 0; left: 0;
+  width: 2px; height: 2px;
   background-color: #0f1923;
 }
-
 .button_lg::after {
   content: '';
   display: block;
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 4px;
-  height: 4px;
+  right: 0; bottom: 0;
+  width: 4px; height: 4px;
   background-color: #0f1923;
   transition: all .2s ease;
 }
@@ -275,27 +257,13 @@
 .button_sl {
   display: block;
   position: absolute;
-  top: 0;
-  bottom: -1px;
-  left: -8px;
+  top: 0; bottom: -1px; left: -8px;
   width: 0;
   background-color: #ff4655;
   transform: skew(-15deg);
   transition: all .2s ease;
 }
-
-.button_text {
-  position: relative;
-}
-
-.button:hover {
-  color: #0f1923;
-}
-
-.button:hover .button_sl {
-  width: calc(100% + 15px);
-}
-
-.button:hover .button_lg::after {
-  background-color: #fff;
-}
+.button_text { position: relative; }
+.button:hover { color: #0f1923; }
+.button:hover .button_sl { width: calc(100% + 15px); }
+.button:hover .button_lg::after { background-color: #fff; }
