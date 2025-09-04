@@ -458,38 +458,14 @@ const TripItinerary: React.FC = () => {
     return null;
   };
 
-  // ===== Summary helpers =====
-  const TH_MONTH_SHORT_SPOKEN = [
-    "มกรา", "กุมภา", "มีนา", "เมษา", "พฤษภา", "มิถุนา",
-    "กรกฎา", "สิงหา", "กันยา", "ตุลา", "พฤศจิกา", "ธันวา",
-  ];
-  const formatThaiSpoken = (d: Date) => `${d.getDate()} ${TH_MONTH_SHORT_SPOKEN[d.getMonth()]}`;
-  const getTripDateRangeText = (days?: number, startDate?: Date) => {
-    if (!days || days <= 0) return "—";
-    const start = new Date(startDate ?? new Date());
-    const end = new Date(start);
-    end.setDate(start.getDate() + (days - 1));
-    return `${formatThaiSpoken(start)}–${formatThaiSpoken(end)}`;
-  };
-  const getDayHeaderText = (dayIndex: number): string => {
-    const today = new Date();
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + (dayIndex - 1));
-    return `วันที่ ${dayIndex} - ${targetDate.toLocaleDateString("th-TH", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })}`;
-  };
+  const getDayHeaderText = (dayIndex: number): string => `วันที่ ${dayIndex}`;
 
   const summary = useMemo(
     () => [
-      { icon: "calendar" as const, title: getTripDateRangeText(trip?.Days), subtitle: `${trip?.Days ?? "—"} วัน` },
-      { icon: "compass" as const, title: "Style", subtitle: userCondition?.Style ?? "—" },
-      { icon: "wallet" as const, title: "Budget", subtitle: userCondition?.Price ? `${userCondition.Price}` : "—" },
-      { icon: "users" as const, title: user ? `${user.Firstname} ${user.Lastname}` : "—", subtitle: "1 คน" },
-      { icon: "pin" as const, title: "Destination", subtitle: trip?.Name || "—" },
+      { icon: "calendar" as const, title: trip?.Days ? `${trip.Days} วัน` : "—", subtitle: "ระยะเวลา" },
+      { icon: "compass" as const, title: userCondition?.Style ?? "—", subtitle: "สไตล์" },
+      { icon: "wallet" as const, title: userCondition?.Price ?? "—", subtitle: "งบประมาณ" },
+      { icon: "pin" as const, title: trip?.Name || "—", subtitle: "ปลายทาง" },
     ],
     [trip, user, userCondition]
   );

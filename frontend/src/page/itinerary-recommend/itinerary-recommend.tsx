@@ -12,7 +12,7 @@ import { GetTripById, GetConditionById, GetAllReviews } from "../../services/htt
 import type { TripInterface } from "../../interfaces/Trips";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { ReviewInterface } from "../../interfaces/review";
-import { Button, Empty, Spin, Tabs, message, Tooltip } from "antd"; // 👈 เพิ่ม Tooltip ตรงนี้
+import { Button, Empty, Spin, message, Tooltip } from "antd"; // 👈 เพิ่ม Tooltip ตรงนี้
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 
 import "./itinerary-print.css";
@@ -119,36 +119,6 @@ const TripItineraryRecommend: React.FC = () => {
 
   const getDayHeaderText = (dayIndex: number): string => `วันที่ ${dayIndex}`;
 
-  const tabItems = useMemo(() => {
-    const summary = [
-      { icon: "calendar" as const, title: trip?.Days ? `${trip.Days} วัน` : "—", subtitle: "Duration" },
-      { icon: "pin" as const, title: trip?.Name || "—", subtitle: "Destination" },
-      { icon: "compass" as const, title: "Style", subtitle: condition?.Style ?? "—" },
-      { icon: "wallet" as const, title: "Budget", subtitle: condition?.Price ? `${condition.Price}` : "—" },
-    ];
-    return [
-      {
-        key: "details",
-        label: "Details",
-        children: (
-          <>
-            {summary.map((s, i) => (
-              <div className="itin-cardrow" key={i}>
-                <div className="itin-cardrow-icon">
-                  <SummaryIcon name={s.icon} />
-                </div>
-                <div className="itin-cardrow-text">
-                  <p className="title">{s.title}</p>
-                  <p className="sub">{s.subtitle}</p>
-                </div>
-              </div>
-            ))}
-          </>
-        ),
-      },
-    ];
-  }, [trip, condition]);
-
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
@@ -167,10 +137,27 @@ const TripItineraryRecommend: React.FC = () => {
             </p>
           </div>
 
-          <div className="itin-tabs no-print">
-            <Tabs activeKey={"details"} items={tabItems} />
+          {/* เดิมใช้ Tabs → เปลี่ยนเป็นแสดงเนื้อหาแบบปกติ */}
+          <div className="itin-details">
+            {[
+              { icon: "calendar" as const, title: trip?.Days ? `${trip.Days} วัน` : "—", subtitle: "ระยะเวลา" },
+              { icon: "pin" as const, title: trip?.Name || "—", subtitle: "ปลายทาง" },
+              { icon: "compass" as const, title: condition?.Style ?? "—", subtitle: "สไตล์" },
+              { icon: "wallet" as const, title: condition?.Price ?? "—", subtitle: "งบประมาณ" },
+            ].map((s, i) => (
+              <div className="itin-cardrow" key={i}>
+                <div className="itin-cardrow-icon">
+                  <SummaryIcon name={s.icon} />
+                </div>
+                <div className="itin-cardrow-text">
+                  <p className="title">{s.title}</p>
+                  <p className="sub">{s.subtitle}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </aside>
+
 
         <main className="itin-content">
           {loading && <div className="itin-loading"><Spin /></div>}

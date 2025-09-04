@@ -22,47 +22,75 @@ const TripItineraryPrintSheet: React.FC<Props> = ({
   const formatNumber = (n: any) =>
     typeof n === "number" ? n.toLocaleString("th-TH") : n ?? "—";
 
+  const hasAnyActivities = Object.values(groupedByDay).flat().length > 0;
+
   return (
     <div className="print-sheet">
-      {/* หัวข้อสำหรับหน้าพิมพ์ */}
-      <div className="print-header">
-        <div className="print-title">
-          {trip?.Name || "—"} {trip?.Days ? `(${trip.Days} วัน)` : ""}
-        </div>
-        {trip?.Days ? (
-          <div className="print-meta">แผนการเดินทางทั้งหมด {trip.Days} วัน</div>
-        ) : null}
-      </div>
+      {/* -------- Cover / Header -------- */}
+      <header className="print-cover">
+        <div className="cover-left">
+          <h1 className="cover-title">{trip?.Name || "ทริปของฉัน"}</h1>
+          <p className="cover-sub">
+            แผนการเดินทาง {trip?.Days ? `${trip.Days} วัน` : "—"}
+          </p>
 
-      {/* ส่วนสรุป */}
-      <div className="print-card">
-        <div className="print-summary-grid">
-          <div className="print-summary-item">
-            <div className="label">ระยะเวลา</div>
-            <div className="value">{trip?.Days ? `${trip.Days} วัน` : "—"}</div>
+          <div className="chip-row">
+            <span className="chip">
+              <span className="chip-label">สไตล์</span>
+              <span className="chip-value">{condition?.Style ?? "—"}</span>
+            </span>
+            <span className="chip">
+              <span className="chip-label">งบประมาณ</span>
+              <span className="chip-value">
+                {condition?.Price ? `${formatNumber(condition.Price)} บาท` : "—"}
+              </span>
+            </span>
+            <span className="chip">
+              <span className="chip-label">ปลายทาง</span>
+              <span className="chip-value">{trip?.Name || "—"}</span>
+            </span>
           </div>
-          <div className="print-summary-item">
-            <div className="label">สถานที่หลัก</div>
-            <div className="value">{trip?.Name || "—"}</div>
+        </div>
+
+        <div className="cover-right">
+          <div className="legend">
+            <div className="legend-title">สัญลักษณ์</div>
+            <ul>
+              <li>
+                <span className="dot dot-landmark" /> สถานที่เที่ยว
+              </li>
+              <li>
+                <span className="dot dot-food" /> ร้านอาหาร
+              </li>
+              <li>
+                <span className="dot dot-hotel" /> ที่พัก
+              </li>
+            </ul>
           </div>
-          <div className="print-summary-item">
-            <div className="label">สไตล์การเที่ยว</div>
-            <div className="value">{condition?.Style ?? "—"}</div>
-          </div>
-          <div className="print-summary-item">
-            <div className="label">งบประมาณ</div>
-            <div className="value">
-              {condition?.Price ? `${formatNumber(condition.Price)} บาท` : "—"}
+
+          <div className="note">
+            <div className="note-title">หมายเหตุ</div>
+            <div className="note-body">
+              เวลาโดยประมาณ อาจปรับตามสภาพจราจร/สภาพอากาศ
             </div>
           </div>
         </div>
+      </header>
 
-        {/* ตารางกิจกรรมรายวัน */}
-        {Object.entries(groupedByDay).map(([dayKey, activities]) => {
+      {/* -------- Daily Tables -------- */}
+      {hasAnyActivities ? (
+        Object.entries(groupedByDay).map(([dayKey, activities]) => {
           const dayNum = Number(dayKey);
           return (
-            <div className="print-day" key={`print-${dayKey}`}>
-              <h3 className="print-day-title">{getDayHeaderText(dayNum)}</h3>
+            <section
+              className="print-day"
+              key={`print-${dayKey}`}
+              aria-label={`Day ${dayNum}`}
+            >
+              <div className="day-ribbon">
+                <span className="ribbon-text">{getDayHeaderText(dayNum)}</span>
+              </div>
+
               <table className="print-table">
                 <thead>
                   <tr>
@@ -77,30 +105,50 @@ const TripItineraryPrintSheet: React.FC<Props> = ({
                       /\*\*(.*?)\*\*/g,
                       "<strong>$1</strong>"
                     );
+                    const to = (record.ToCode || "").toUpperCase();
+                    const dotClass = to.startsWith("A")
+                      ? "dot-hotel"
+                      : to.startsWith("R")
+                      ? "dot-food"
+                      : "dot-landmark";
+
                     return (
                       <tr key={`print-row-${dayKey}-${idx}`}>
                         <td className="time-cell">
                           {record.StartTime} – {record.EndTime}
                         </td>
                         <td className="place-cell">
+                          <span className={`dot ${dotClass}`} />
                           {displayName(record.ToCode)}
                         </td>
                         <td>
-                          <span dangerouslySetInnerHTML={{ __html: html }} />
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: html,
+                            }}
+                          />
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+            </section>
           );
-        })}
-      </div>
+        })
+      ) : (
+        <section className="print-day">
+          <div className="empty-hint">ยังไม่มีรายการกิจกรรม</div>
+        </section>
+      )}
 
-      <div className="print-footer">
-        สร้างด้วย Trip Planner • {new Date().getFullYear()}
-      </div>
+      {/* -------- Footer (repeat every page) -------- */}
+      <footer className="print-footer">
+        <div className="footer-left">
+          สร้างด้วย Trip Planner • {new Date().getFullYear()}
+        </div>
+        <div className="footer-right page-number" />
+      </footer>
     </div>
   );
 };

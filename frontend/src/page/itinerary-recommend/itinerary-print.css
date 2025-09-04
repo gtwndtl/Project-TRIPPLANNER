@@ -1,12 +1,167 @@
-/* โหมดดูปกติ: ซ่อนแผ่นพิมพ์ */
+/* ========== Default (screen): hide print canvas ========== */
 .print-sheet {
   display: none;
 }
 
-/* ====== เฉพาะตอนพิมพ์ ====== */
-@media print {
+/* Base colors */
+:root {
+  --ink: #0f172a;        /* slate-900 */
+  --muted: #60758a;      /* slate-ish */
+  --line: #e5e7eb;       /* border */
+  --soft: #f8fafc;       /* bg chip */
+  --soft-2: #f1f5f9;     /* th bg */
+  --shadow: rgba(0,0,0,.04);
 
-  /* ซ่อน UI ที่ไม่ต้องการใน PDF */
+  --landmark: #0ea5e9;   /* sky-500 */
+  --food: #f97316;       /* orange-500 */
+  --hotel: #22c55e;      /* green-500 */
+}
+
+/* Typography for print area */
+.print-sheet {
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans','Prompt', 'Noto Sans', sans-serif!important;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Helpers to improve Thai word handling */
+.print-sheet,
+.print-sheet * {
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  line-break: auto !important;
+  hyphens: none !important;
+  letter-spacing: 0 !important;
+  white-space: normal !important;
+  orphans: 3;
+  widows: 3;
+}
+
+/* ---------- Cover ---------- */
+.print-cover {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--line);
+}
+
+.cover-title {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+.cover-sub {
+  margin: 0 0 10px 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.chip {
+  background: var(--soft);
+  border: 1px solid #eef2f7;
+  border-radius: 999px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.chip-value {
+  font-weight: 800;
+}
+
+/* Legend & note */
+.legend { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fff; box-shadow: 0 0.5pt 1pt var(--shadow); }
+.legend-title { font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+.legend ul { margin: 0; padding-left: 16px; }
+.legend li { margin: 2px 0; }
+
+.note { margin-top: 10px; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; }
+.note-title { font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+.note-body { color: var(--muted); }
+
+/* Dots */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 6px; transform: translateY(-1px); }
+.dot-landmark { background: var(--landmark); }
+.dot-food { background: var(--food); }
+.dot-hotel { background: var(--hotel); }
+
+
+/* ---------- Day Section ---------- */
+.print-day { margin-top: 14px; page-break-inside: avoid; break-inside: avoid; }
+.day-ribbon {
+  display: inline-flex;
+  background: #ffffff;
+  border-left: 4px solid #64748b; /* slate-500 */
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin: 0 0 6px 0;
+}
+.ribbon-text { font-size: 15px; font-weight: 900; }
+
+/* ---------- Table ---------- */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+  border: 1px solid var(--line);
+}
+.print-table thead { display: table-header-group; }
+.print-table tfoot { display: table-footer-group; }
+
+.print-table th,
+.print-table td {
+  border: 1px solid var(--line);
+  padding: 7px 8px;
+  vertical-align: top;
+}
+.print-table th {
+  text-align: left;
+  background: var(--soft-2);
+  font-weight: 900;
+}
+.print-table tbody tr:nth-child(odd) { background: #fafafa; }
+
+.time-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.place-cell { font-weight: 800; }
+
+.print-table tr { page-break-inside: avoid; break-inside: avoid; }
+
+/* Empty state */
+.empty-hint {
+  padding: 12px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* ---------- Footer ---------- */
+.print-footer {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: right;
+}
+
+/* ========== PRINT ONLY ========== */
+@media print {
+  /* Hide app chrome */
   .no-print,
   .app-header,
   .global-header,
@@ -16,217 +171,57 @@
   .navbar,
   .topbar,
   header[role="banner"],
-  .itin-page-title {
+  .itin-page-title,
+  .ant-tooltip,
+  .ant-popover {
     display: none !important;
   }
 
-  body,
-  .ant-layout,
-  .itin-container {
-    background: #fff !important;
-  }
+  body, .ant-layout, .itin-container { background: #fff !important; }
+  .print-sheet { display: block !important; }
 
-  /* แสดงแผ่นพิมพ์ */
-  .print-sheet {
-    display: block !important;
-  }
-
-  /* ตั้งค่าหน้ากระดาษ */
+  /* Page setup */
   @page {
     size: A4;
     margin: 14mm 12mm;
   }
 
-  html,
-  body {
+  html, body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* ไม่ให้คั่นกลางหน้า */
-  .print-day {
-    page-break-inside: avoid;
-    break-inside: avoid;
-    margin-bottom: 10px;
-  }
+  .print-sheet { padding-bottom: 20mm; }
 
-  .print-day-title {
-    page-break-after: avoid;
-  }
-
-  /* ===== เลขหน้าในงานพิมพ์ ===== */
-  /* กันเนื้อหาชน footer */
-  .print-sheet {
-    padding-bottom: 18mm;
-  }
-
-  /* ทำ footer ลอยคงที่ ซ้ำทุกหน้า */
+  /* Footer fixed */
   .print-footer {
     position: fixed;
     left: 12mm;
     right: 12mm;
     bottom: 8mm;
-    /* ต้องอยู่ภายใน margin ของ @page */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 0;
-    padding: 0;
+    margin: 0; padding: 0;
     background: transparent;
     border: 0;
     z-index: 9999;
   }
 
-  /* แสดงเลขหน้า: หน้า X / Y (รองรับ Chrome/Edge/Brave) */
-  .page-number::after {
-    content: "หน้า " counter(page) " / " counter(pages);
-    font-weight: 700;
-    color: #334155;
-    /* slate-700 */
-  }
+  .day-ribbon { page-break-after: avoid; break-after: avoid; }
 }
 
-/* ====== ตั้งค่าทั่วไป (ป้องกันแตกคำไทย/สวยงาม) ====== */
-.print-sheet,
-.print-sheet * {
-  word-break: normal !important;
-  overflow-wrap: break-word !important;
-  line-break: auto !important;
-  hyphens: none !important;
-  letter-spacing: 0 !important;
-  white-space: normal !important;
-}
-
-.print-sheet {
-  color: #0f172a;
-  font-family: "Noto Sans Thai", "Sarabun", "Noto Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-/* ===== หัวเรื่อง ===== */
-.print-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.print-title {
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.print-meta {
-  font-size: 12px;
-  color: #60758a;
-  font-weight: 600;
-}
-
-/* ===== การ์ดสรุป ===== */
-.print-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 12px;
-  background: #fff;
-  box-shadow: 0 0.5pt 1pt rgba(0, 0, 0, .02);
-}
-
-.print-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.print-summary-item {
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
-  border-radius: 10px;
-  padding: 10px;
-}
-
-.print-summary-item .label {
-  font-size: 11px;
-  color: #60758a;
-  margin-bottom: 3px;
-  font-weight: 600;
-}
-
-.print-summary-item .value {
-  font-size: 14px;
-  font-weight: 800;
-}
-
-/* ===== ตารางรายวัน ===== */
-.print-day {
-  margin-top: 14px;
-}
-
-.print-day-title {
-  margin: 0 0 6px 0;
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.print-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  table-layout: fixed;
-  border: 1px solid #e5e7eb;
-}
-
-.print-table th,
-.print-table td {
-  border: 1px solid #e5e7eb;
-  padding: 7px 8px;
-  vertical-align: top;
-}
-
-.print-table th {
-  text-align: left;
-  background: #f1f5f9;
-  font-weight: 800;
-}
-
-.print-table tbody tr:nth-child(odd) {
-  background: #fafafa;
-}
-
-.time-cell {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.place-cell {
-  font-weight: 700;
-}
-
-/* ===== ท้ายกระดาษ (โหมดจอ) ===== */
-.print-footer {
-  margin-top: 12px;
-  font-size: 11px;
-  color: #94a3b8;
-  text-align: right;
-}
-
-/* ===== Floating Print Button (มุมขวาล่าง) ===== */
+/* ---------- Float Print Button (screen only) ---------- */
 .fab-print {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  z-index: 1100; /* ให้ลอยเหนือเนื้อหา/antd */
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
-
-/* เงา + โค้งมนเพิ่มความเด่นให้ปุ่ม (อาศัย antd Button เป็นหลัก) */
 .fab-print .ant-btn {
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   width: 48px;
@@ -235,12 +230,3 @@
   align-items: center;
   justify-content: center;
 }
-
-/* ซ่อนตอนพิมพ์ */
-@media print {
-  .ant-tooltip,
-  .ant-popover {
-    display: none !important;
-  }
-}
-
