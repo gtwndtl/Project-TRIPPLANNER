@@ -163,6 +163,7 @@
 @media print {
   /* Hide app chrome */
   .no-print,
+  .itin-details,
   .app-header,
   .global-header,
   .site-header,
