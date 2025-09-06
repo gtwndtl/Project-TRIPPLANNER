@@ -97,7 +97,7 @@ func main() {
 	authorized.DELETE("/restaurants/:id", restaurantCtrl.Delete)
 
 	// User routes (ยกเว้นสร้าง user และ login ที่ public)
-	authorized.GET("/users", userCtrl.GetAllUsers)
+	r.GET("/users", userCtrl.GetAllUsers)
 	authorized.GET("/users/:id", userCtrl.GetUserByID)
 	authorized.PUT("/users/:id", userCtrl.UpdateUser)
 	authorized.DELETE("/users/:id", userCtrl.DeleteUser)
