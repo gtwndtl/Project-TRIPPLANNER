@@ -297,8 +297,6 @@ const TripRecommendations: React.FC = () => {
   return (
     <aside className="trip-sidebar">
       {contextHolder}
-      <h2 className="trip-sidebar-title">Recommendations</h2>
-
       {loading && (
         <div className="reco-state">
           <Spin />

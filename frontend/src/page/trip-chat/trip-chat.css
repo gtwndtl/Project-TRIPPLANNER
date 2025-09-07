@@ -1,31 +1,55 @@
 :root {
   --navbar-height: 65px;
   --bg: #fff;
+  --surface: #ffffff;
+  --surface-alt: #fbfdff;
+
   --ink: #111418;
   --muted: #60758a;
+
   --radius-lg: 12px;
+
+  /* lines & shadows */
+  --line: #e6edf4;
+  /* เส้นบาง */
+  --line-strong: #d8e1ec;
+  /* เส้นเข้มขึ้นเล็กน้อย */
+  --shadow-sm: 0 1px 2px rgba(17, 20, 24, .06);
+  --shadow-md: 0 8px 24px rgba(17, 20, 24, .10);
+
+  /* accent แบบสุภาพ */
+  --accent: #2f4dbd;
+  /* royal indigo */
+  --accent-06: rgba(47, 77, 189, .06);
+  --accent-12: rgba(47, 77, 189, .12);
 }
 
+/* ===== Shell ===== */
 .trip-chat {
   height: calc(100vh - var(--navbar-height));
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  overflow: hidden;
+  background:
+    radial-gradient(1000px 520px at 90% -200px, #f6f9ff 0%, transparent 55%),
+    var(--bg);
+  overflow: visible;
+  /* อย่าตัดมุม/เงา */
 }
 
+/* ===== Layout ===== */
 .trip-chat-layout {
   height: 100%;
   min-height: 0;
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  gap: 24px;
+  gap: 20px;
   padding: 20px 24px 28px;
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
 }
 
+/* ===== Sidebar ===== */
 .trip-sidebar {
   display: flex;
   flex-direction: column;
@@ -35,19 +59,141 @@
 }
 
 .trip-sidebar-title {
-  padding: 20px 16px 8px;
+  padding: 14px 16px 8px;
   font-size: 22px;
   font-weight: 700;
   color: var(--ink);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .86));
+  backdrop-filter: blur(2px);
+  border-bottom: 1px solid var(--line);
+}
+
+.trip-sidebar>*+* {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+
+/* ===== Main chat surface ===== */
+.trip-chat-main {
+  position: relative;
+  isolation: isolate;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 1px var(--line) inset, var(--shadow-sm);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------- Titlebar (กรอบเรียบ หรู) ---------- */
+.trip-chat-titlebar {
+  margin: 12px 12px 0;
+  padding: 12px 16px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-chat-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f1a2b;
+  letter-spacing: -0.015em;
+}
+
+/* ---------- Scroll zone ---------- */
+.trip-chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px 0;
+}
+
+/* ---------- Composer (กรอบเรียบ หรู) ---------- */
+.trip-chat-composer {
+  margin: 8px 12px 12px;
+  padding: 10px 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-chat-composer .trip-chat-inputwrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 10px;
+  transition: box-shadow .2s, border-color .2s, background .2s;
+}
+
+.trip-chat-composer .trip-chat-inputwrap:focus-within {
+  border-color: var(--line-strong);
+  box-shadow:
+    0 0 0 1px var(--line-strong) inset,
+    0 0 0 4px var(--accent-12);
+  background: #fbfdff;
+}
+
+.trip-chat-input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 6px 8px;
+  color: var(--ink);
+}
+
+.trip-chat-input::placeholder {
+  color: #9aa5b1;
+}
+
+.trip-chat-inputbtn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 6px;
+  color: var(--accent);
+  transition: background .2s, transform .03s, color .2s;
+}
+
+.trip-chat-inputbtn:hover {
+  background: var(--accent-06);
+}
+
+.trip-chat-inputbtn:active {
+  transform: translateY(1px);
+}
+
+/* ===== Recommendation / Map ===== */
+.trip-recommendation,
+.trip-map {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  background: #fff;
 }
 
 .trip-recommendation {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   align-items: stretch;
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  background: var(--bg);
+  padding: 14px;
+  transition: box-shadow .2s, transform .05s, border-color .2s;
+}
+
+.trip-recommendation:hover {
+  border-color: #dfe4f7;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .trip-reco-text {
@@ -56,26 +202,77 @@
   flex-direction: column;
   gap: 2px;
 }
-.trip-reco-days    { color: var(--muted); font-size: 13px; }
-.trip-reco-city    { color: var(--ink); font-weight: 700; }
-.trip-reco-country { color: var(--muted); font-size: 13px; }
+
+.trip-reco-days {
+  color: #2e3a4f;
+  font-size: 13px;
+  display: inline-block;
+  background: #f1f4fb;
+  border: 1px solid #e6ebf5;
+  border-radius: 999px;
+  padding: 2px 8px;
+  line-height: 1.6;
+}
+
+.trip-reco-city {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.trip-reco-country {
+  color: var(--muted);
+  font-size: 13px;
+  display: inline-block;
+  background: #f6f8ff;
+  border: 1px solid #e6ebff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  line-height: 1.6;
+}
 
 .trip-reco-thumb {
   flex: 1;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16/9;
   border-radius: var(--radius-lg);
   background: center/cover no-repeat;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .03) inset;
+  overflow: hidden;
 }
 
+/* Map เติมลายจาง ๆ พอให้มีมิติ */
 .trip-map {
-  height: 180px;
-  margin: 8px 16px;
-  border-radius: var(--radius-lg);
-  background: center/cover no-repeat;
+  height: 200px;
+  margin: 8px 16px 0;
+  background-image:
+    linear-gradient(0deg, rgba(47, 77, 189, .035), rgba(47, 77, 189, .035)),
+    repeating-linear-gradient(45deg,
+      rgba(17, 20, 24, .03) 0 10px,
+      transparent 10px 20px);
 }
 
+/* ===== Responsive ===== */
 @media (max-width: 980px) {
-  .trip-chat-layout   { grid-template-columns: 1fr; }
-  .trip-sidebar { order: 2; }
-  .trip-chat-main    { order: 1; }
+  .trip-chat-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-sidebar {
+    order: 2;
+  }
+
+  .trip-chat-main {
+    order: 1;
+  }
+
+  .trip-sidebar-title {
+    position: static;
+    border-bottom: none;
+    backdrop-filter: none;
+  }
+
+  .trip-map {
+    height: 180px;
+  }
 }

@@ -1,83 +1,177 @@
+/* =========================================
+   Trip Explore (polish only, no layout change)
+   ========================================= */
+
 .trip-explore-page {
-  padding: 32px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 32px;                /* คงเดิม */
+  max-width: 1200px;            /* คงเดิม */
+  margin: 0 auto;               /* คงเดิม */
   font-family: "Plus Jakarta Sans", Arial, sans-serif;
+
+  /* เติมบรรยากาศจาง ๆ ไม่กระทบ layout */
+  background:
+    radial-gradient(900px 420px at 110% -120px, rgba(47,77,189,.05) 0%, transparent 55%),
+    #fff;
 }
 
+/* Header */
 .trip-explore-title {
   text-align: center;
-  font-size: 28px;
-  margin-bottom: 4px;
+  font-size: 28px;              /* คงเดิม */
+  margin-bottom: 4px;           /* คงเดิม */
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: #0f1a2b;
 }
-
 .trip-explore-sub {
   text-align: center;
-  color: #555;
-  margin-bottom: 24px;
+  color: #556173;               /* ชัดขึ้นเล็กน้อย */
+  margin-bottom: 24px;          /* คงเดิม */
+  font-size: 14px;
 }
 
+/* Grid */
 .trip-explore-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* คงเดิม */
+  gap: 20px;                    /* คงเดิม */
 }
 
+/* Card */
 .trip-explore-card {
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
+  background: #fff;             /* คงเดิม */
+  border-radius: 12px;          /* คงเดิม */
+  overflow: hidden;             /* คงเดิม */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10); /* คงเดิม */
+  cursor: pointer;              /* คงเดิม */
+  display: flex;                /* คงเดิม */
+  flex-direction: column;       /* คงเดิม */
+
+  position: relative;           /* เพื่อใส่ overlay ได้ */
+  border: 1px solid #e6edf4;    /* เส้นบางดูพรีเมียม */
+  transition:
+    border-color .25s ease,
+    box-shadow .25s ease,
+    transform .12s ease,
+    background-color .25s ease;
 }
 
-.trip-explore-card-img {
+/* เติม overlay ไล่เฉดที่ส่วนรูปด้านบน (ไม่กระทบความสูง/เลย์เอาต์) */
+.trip-explore-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
   width: 100%;
-  height: 180px;
-  object-fit: cover;
+  height: 180px;                /* เท่ากับความสูงรูป */
+  background:
+    linear-gradient(0deg, rgba(0,0,0,.03), rgba(0,0,0,.03));
+  pointer-events: none;
 }
 
+/* Hover/Focus ให้ “ดูแพงขึ้น” */
+.trip-explore-card:hover {
+  border-color: #d1d9e6;
+  box-shadow: 0 8px 24px rgba(17, 20, 24, 0.10);
+  transform: translateY(-2px);
+  background: #fbfdff;
+}
+.trip-explore-card:focus-visible {
+  outline: none;
+  border-color: #c8d4ff;
+  box-shadow:
+    0 0 0 2px #c8d4ff,
+    0 8px 24px rgba(17,20,24,.12);
+}
+
+/* Image */
+.trip-explore-card-img {
+  width: 100%;                  /* คงเดิม */
+  height: 180px;                /* คงเดิม */
+  object-fit: cover;            /* คงเดิม */
+  display: block;
+  border-bottom: 1px solid #eef2f6;  /* แยกส่วนรูปกับเนื้อหาให้ชัด */
+  transition: transform .25s ease, filter .25s ease;
+}
+
+/* รูปขยายเล็กน้อยตอน hover ให้มีมิติ */
+.trip-explore-card:hover .trip-explore-card-img {
+  transform: scale(1.02);
+  filter: saturate(1.03);
+}
+
+/* Body */
 .trip-explore-card-body {
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
+  padding: 12px 16px;           /* คงเดิม */
+  display: flex;                /* คงเดิม */
+  flex-direction: column;       /* คงเดิม */
+  gap: 6px;                     /* เพิ่มชั้นหายใจเล็กน้อย (ไม่เปลี่ยน spacing หลัก) */
 }
 
+/* Title — คงขนาด แต่ทำให้ตัด 2 บรรทัดเรียบร้อยขึ้น */
 .trip-explore-card-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 6px;
+  font-size: 16px;              /* คงเดิม */
+  font-weight: 700;             /* เด่นขึ้นนิด */
+  margin: 0;                    /* แทน margin-bottom: 6px */
+  color: #111418;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;        /* จำกัด 2 บรรทัด */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
+/* Comment — คงสเปคเดิม เพิ่มอ่านง่ายขึ้นนิด */
 .trip-explore-card-comment {
-  font-size: 13px;
-  color: #555;
-  line-height: 1.4;
-  margin-bottom: 10px;
+  font-size: 13px;              /* คงเดิม */
+  color: #5b6574;               /* กลางๆ อ่านง่าย */
+  line-height: 1.45;
+  margin-bottom: 6px;           /* กระชับนิดเดียวจาก 10px */
   display: -webkit-box;
-  -webkit-line-clamp: 2; /* จำกัด 2 บรรทัด */
+  -webkit-line-clamp: 2;        /* คงเดิม */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Footer — เพิ่มความเรียบร้อยและตัวคั่นจุดเล็กๆ */
 .trip-explore-card-footer {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  gap: 6px;
-  color: #444;
+  display: flex;                /* คงเดิม */
+  align-items: center;          /* คงเดิม */
+  font-size: 12px;              /* คงเดิม */
+  gap: 6px;                     /* คงเดิม */
+  color: #465263;               /* ชัดขึ้นเล็กน้อย */
 }
 
+/* ถ้า footer มี span หลายตัว ใส่ตัวแบ่งเป็นจุดกลางเล็กๆ */
+.trip-explore-card-footer > * + * {
+  position: relative;
+  padding-left: 10px;
+}
+.trip-explore-card-footer > * + *::before {
+  content: "•";
+  position: absolute;
+  left: 2px;
+  color: #aab4c0;
+}
+
+/* ปุ่ม Primary — คงโทน เข้มขึ้นตอน hover */
 .trip-explore-page .ant-btn-primary {
   background-color: #003366;
   border-radius: 8px;
   padding: 6px 18px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  border: none;
+  transition: filter .2s ease, transform .03s ease, box-shadow .2s ease;
 }
 .trip-explore-page .ant-btn-primary:hover {
-  background-color: #0055aa !important;
+  background-color: #0055aa !important; /* คงเดิม */
+  filter: saturate(1.05);
+  box-shadow: 0 6px 16px rgba(0, 85, 170, .25);
+  transform: translateY(-1px);
+}
+.trip-explore-page .ant-btn-primary:active {
+  transform: translateY(0);
 }

@@ -139,7 +139,7 @@
 }
 
 .trip-chat-bubble.ai {
-    background: var(--surface);
+    background: rgb(247, 246, 246);
     color: var(--ink);
 }
 
@@ -184,8 +184,8 @@
 }
 
 .trip-chat-bubble.user {
-    background: var(--brand);
-    color: #fff;
+    background: rgb(247, 246, 246);
+    color: #000000;
 }
 
 /* =========================================

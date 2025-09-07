@@ -1,5 +1,3 @@
-
-
 :root {
   --text: #111418;
   --muted: #60758a;
@@ -8,21 +6,33 @@
   --divider: #dbe0e6;
   --radius: 12px;
   --danger: #e03131;
+
+  /* โทนมินิมอลหรู */
+  --surface: #fff;
+  --surface-alt: #fbfdff;
+  --line-strong: #ced7e1;
+  --shadow-sm: 0 1px 2px rgba(17, 20, 24, .06);
+  --shadow-md: 0 8px 24px rgba(17, 20, 24, .10);
+  --accent: #2f4dbd;
+  --accent-06: rgba(47, 77, 189, .06);
+  --accent-12: rgba(47, 77, 189, .12);
 }
 
 /* ===== Shell ===== */
 .itin-root {
   min-height: 100vh;
-  background: var(--bg);
   color: var(--text);
   display: flex;
   flex-direction: column;
+  background:
+    radial-gradient(1100px 540px at 100% -220px, #f6f9ff 0%, transparent 55%),
+    var(--bg);
 }
 
 /* ===== Layout ===== */
 .itin-container {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   padding: 20px 24px;
   justify-content: center;
 }
@@ -32,6 +42,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: fit-content;
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
 }
 
 .itin-content {
@@ -40,14 +58,20 @@
 }
 
 .itin-title-row {
-  padding: 12px 16px;
+  padding: 10px 16px 0;
 }
 
 .itin-page-title {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
   letter-spacing: -0.015em;
+  display: inline-block;              /* ให้กว้างเท่าข้อความ */
+  margin: 0 auto;                     /* จัดกึ่งกลางในแถว */
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--divider); /* เส้นใต้เฉพาะข้อความ */
+  text-align: center;                 /* เผื่อมีขึ้นบรรทัดใหม่ */
 }
+
 
 /* ===== Tabs ===== */
 .itin-tabs {
@@ -57,7 +81,7 @@
 }
 
 .ant-tabs-nav {
-  margin-left: 16px !important; /* ขยับไปขวาตามต้องการ */
+  margin-left: 16px !important;
 }
 
 .itin-tabs .tab--active {
@@ -65,16 +89,102 @@
   border-bottom-color: var(--text);
 }
 
-/* ===== Section headings ===== */
+/* ===== Section (กล่องของแต่ละวัน) ===== */
+.itin-content>section {
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 8px 10px 12px;
+  /* ซ้าย-ขวาเท่ากัน ดูสมมาตร */
+  margin-bottom: 16px;
+}
+
+/* Header แถวบนของวัน: ซ้าย-ขวาบาลานซ์ */
+.itin-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 2px;
+  margin: 0 6px 6px;
+  /* ให้ชิดเท่ากับการ์ดกิจกรรม (ที่มี margin 6px) */
+}
+
+/* ป้ายหัวข้อวัน (pill) */
+/* ---------- Controls tokens ---------- */
+:root{
+  --ctrl-h: 40px;          /* ความสูงเดียวกับปุ่ม */
+  --ctrl-px: 12px;         /* padding ซ้าย-ขวา */
+  --ctrl-font: 14px;       /* ขนาดตัวอักษรเดียวกับปุ่ม */
+}
+
+/* ทำให้หัวข้อวันมีขนาดเท่าปุ่ม */
 .itin-section-title {
-  font-size: 22px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  box-sizing: border-box;
+
+  height: var(--ctrl-h);
+  padding: 0 var(--ctrl-px);
+
+  font-size: var(--ctrl-font);
   font-weight: 700;
   letter-spacing: -0.015em;
-  padding: 20px 16px 12px;
-}
-.itin-section-title.m-0 { margin: 0; }
+  line-height: 1;
 
-/* ===== Overview header row ===== */
+  background: #f2f5fb;
+  border: 1px solid #e6ebf5;
+  border-radius: var(--radius);  /* ให้ทรงเดียวกับปุ่ม */
+  color: var(--text);
+}
+
+/* ปุ่มใช้ตัวแปรเดียวกันเพื่อให้ match กันเสมอ */
+.btn-secondary {
+  width: 100%;
+  height: var(--ctrl-h);
+  padding: 0 var(--ctrl-px);
+  box-sizing: border-box;
+
+  font-size: var(--ctrl-font);
+  font-weight: 700;
+
+  border: 1px solid #e6ebf5;
+  border-radius: var(--radius);
+  background: #f2f5fb;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .2s, transform .02s, box-shadow .2s;
+}
+
+
+.itin-section-title.m-0 {
+  margin: 0;
+}
+
+/* ปุ่มทางขวาในแถวหัวข้อวัน – ทำเป็น pill สูงเท่าหัวข้อ */
+.itin-day-header .btn-ghost {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #f5f7fb;
+  border: 1px solid var(--divider);
+  transition: background .2s, border-color .2s, box-shadow .2s, transform .02s;
+}
+
+.itin-day-header .btn-ghost:hover {
+  background: #fbfdff;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+
+.itin-day-header .btn-ghost:active {
+  transform: translateY(1px);
+}
+
+/* ===== Overview header row (ใช้ในส่วนอื่น ๆ) ===== */
 .itin-overview-header {
   display: flex;
   align-items: center;
@@ -86,77 +196,96 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
+  background: var(--surface);
   border: 1px solid var(--divider);
   padding: 6px 12px;
   border-radius: 10px;
   cursor: pointer;
   font-weight: 700;
+  transition: background .2s, border-color .2s, box-shadow .2s;
 }
-.btn-ghost:hover { background: #fafbfc; }
 
-/* ===== Rows/Cards ===== */
+.btn-ghost:hover {
+  background: #fbfdff;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+
+/* ===== Rows/Cards (กิจกรรมแต่ละแถว) ===== */
 .itin-cardrow {
   display: flex;
   align-items: center;
   gap: 16px;
-  min-height: 72px;
-  padding: 10px 16px;
+  min-height: 60px;
+  padding: 8px 12px;
+  margin: 6px 6px;
+  /* ให้ระยะข้างเท่ากับ header */
   background: #fff;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 10px;
+  transition: background .15s ease, box-shadow .15s ease, border-color .2s;
+  box-shadow: 0 1px 0 rgba(17, 20, 24, .04);
+  border: 1px solid transparent;
 }
-.itin-cardrow:hover { background: #fafbfc; }
 
-/* ไฮไลต์ทริปที่กำลังเลือกอยู่ (Overview) */
+.itin-cardrow:hover {
+  background: #fbfdff;
+  border-color: var(--divider);
+  box-shadow: var(--shadow-md);
+}
+
+/* ไฮไลต์รายการ */
 .itin-cardrow.is-active {
-  background: #eef6ff;
-  box-shadow: inset 0 0 0 1px #cfe4ff;
+  background: #eef4ff;
+  box-shadow: inset 0 0 0 1px #d9e5ff, var(--shadow-sm);
+  border-color: #d9e5ff;
 }
 
+/* ไอคอนซ้าย */
 .itin-cardrow-icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: 10px;
   background: var(--chip);
   color: var(--text);
   flex-shrink: 0;
 }
-.itin-cardrow-icon .icon { font-size: 20px; }
 
+.itin-cardrow-icon .icon {
+  font-size: 18px;
+}
+
+/* ข้อความ */
 .itin-cardrow-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1; /* ดันส่วนขวาไปชิดขอบ */
+  flex: 1;
 }
+
 .itin-cardrow-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.itin-cardrow-text .title {
-  font-size: 16px;
+.itin-cardrow-text .title,
+.itin-cardrow-text .title-itin {
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.2;
-  margin: 0 0 4px;
+  line-height: 1.25;
+  margin: 0 0 2px;
 }
-.itin-cardrow-text .title-itin {
-  font-size: 16px;
-  color: var(--text);
-  line-height: 1.2;
-  margin: 0 0 4px;
-}
+
 .itin-cardrow-text .sub {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--muted);
   margin: 0;
 }
 
-/* ปุ่มไอคอนเล็ก (เช่น ถังขยะ) */
+/* ปุ่มไอคอนเล็ก */
 .btn-icon {
   width: 34px;
   height: 34px;
@@ -166,41 +295,65 @@
   display: inline-grid;
   place-items: center;
   cursor: pointer;
-  transition: background .15s ease, border-color .15s ease, transform .02s ease;
+  transition: background .15s, border-color .15s, transform .02s, box-shadow .2s;
 }
-.btn-icon:hover { background: #fafbfc; }
-.btn-icon:active { transform: translateY(1px); }
-.btn-icon.danger { color: var(--danger); border-color: #ffd6d6; }
-.btn-icon.danger:hover { background: #fff5f5; }
 
-/* ===== Buttons (Edit/Cancel/Save) ===== */
-.itin-actions { padding: 12px 16px; }
-.btn-secondary {
-  width: 100%;
-  height: 40px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--chip);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.02s ease;
+.btn-icon:hover {
+  background: #fbfdff;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px var(--accent-06);
 }
-.btn-secondary:hover { background: #e7eaf0; }
-.btn-secondary:active { transform: translateY(1px); }
-.btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-row { display: flex; gap: 8px; }
 
-.button-edit-group{
+.btn-icon:active {
+  transform: translateY(1px);
+}
+
+.btn-icon.danger {
+  color: var(--danger);
+  border-color: #ffd6d6;
+}
+
+.btn-icon.danger:hover {
+  background: #fff5f5;
+}
+
+/* ===== ปุ่มรอง (แก้ไข/ยกเลิก/บันทึก) ===== */
+.itin-actions {
+  padding: 12px 16px;
+}
+
+
+
+.btn-secondary:hover {
+  background: #edf2ff;
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+
+.btn-secondary:active {
+  transform: translateY(1px);
+}
+
+.btn-secondary:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.button-edit-group {
   display: flex;
   justify-content: space-between;
 }
-/* ให้ Select กว้างพอดีตอนแก้ไข */
+
+/* Select ขณะแก้ไข */
 .itin-cardrow .ant-select {
   min-width: 320px;
   max-width: 420px;
 }
+
 @media (max-width: 640px) {
   .itin-cardrow .ant-select {
     min-width: 100%;
@@ -208,119 +361,107 @@
   }
 }
 
-/* ===== Subtle divider under left summary list ===== */
-.itin-summary .itin-cardrow + .itin-cardrow {
+/* Summary list ให้เป็นก้อนต่อเนื่อง */
+.itin-summary .itin-cardrow+.itin-cardrow {
   border-top: 1px solid var(--divider);
 }
 
-/* ===== Loading overlay spacing ===== */
+.itin-summary .itin-cardrow {
+  border-radius: 0;
+  box-shadow: inset 0 -1px 0 var(--divider);
+  margin: 0;
+}
+
+.itin-summary .itin-cardrow:first-child {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.itin-summary .itin-cardrow:last-child {
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  box-shadow: none;
+}
+
+/* Loading */
 .itin-loading {
   padding: 12px 16px;
 }
 
+/* Floating print button */
+.fab-print {
+  right: 24px;
+  bottom: 24px;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 1280px) {
-  :root { --sidebar-w: 320px; }
+  :root {
+    --sidebar-w: 320px;
+  }
 }
+
 @media (max-width: 1024px) {
-  :root { --sidebar-w: 300px; }
-  .itin-page-title { font-size: 34px; }
+  :root {
+    --sidebar-w: 300px;
+  }
+
+  .itin-page-title {
+    font-size: 28px;
+  }
 }
+
 @media (max-width: 960px) {
   .itin-container {
     flex-direction: column;
     gap: 16px;
   }
+
   .itin-summary {
     width: 100%;
     position: static;
     top: auto;
+    box-shadow: 0 1px 1px rgba(17, 20, 24, .03);
   }
-  .itin-content { max-width: 100%; }
+
+  .itin-content {
+    max-width: 100%;
+  }
+
+  .itin-content>section {
+    margin-bottom: 12px;
+  }
+
+  .itin-section-title {
+    font-size: 16px;
+  }
 }
 
+/* ===== Print ===== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 
-/* ============ Make it feel less empty (no layout change) ============ */
+  .itin-root {
+    background: #fff;
+  }
 
-/* 1) กำหนดกรอบการอ่าน + พื้นหลังจาง ๆ ทั้งหน้า */
-.itin-root {
-  background:
-    radial-gradient(1200px 600px at 100% -200px, #f7f9fb 0%, transparent 55%),
-    var(--bg);
-}
+  .itin-summary {
+    border: 0;
+    box-shadow: none;
+    background: #fff;
+  }
 
-/* 2) ขันระยะ spacing ให้กระชับขึ้นเล็กน้อย */
-.itin-container { gap: 20px; }
-.itin-title-row { padding: 8px 16px 0; }
-.itin-page-title { font-size: 30px; line-height: 1.15; }
+  .itin-content>section {
+    page-break-inside: avoid;
+    border: 1px solid #cfd8e3;
+    box-shadow: none;
+  }
 
-/* 3) ทำบล็อกซ้าย/ขวาดูมีมวลขึ้นด้วยเส้นขอบ+เงาอ่อน (ไม่เปลี่ยนกริด/ขนาด) */
-.itin-summary {
-  border: 1px solid var(--divider);
-  border-radius: var(--radius);
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(17, 20, 24, .04);
-  padding-top: 4px;
-}
-.itin-content > section {
-  background: #fff;
-  border: 1px solid var(--divider);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 2px rgba(17,20,24,.04);
-  padding: 6px 4px 8px;     /* กระชับ แต่ยังหายใจได้ */
-  margin-bottom: 16px;
-}
-
-/* 4) หัวข้อ "วันที่ X" ให้ชัดแบบ pill */
-.itin-day-header {
-  padding: 8px 10px 4px;
-}
-.itin-section-title {
-  padding: 6px 10px;
-  font-size: 18px;
-  background: var(--chip);
-  border-radius: 999px;
-  display: inline-block;
-  margin-left: 6px;
-}
-
-/* 5) Card ให้แน่นขึ้น + ดูมีชั้น */
-.itin-cardrow {
-  min-height: 60px;         /* เดิม 72 */
-  padding: 8px 12px;
-  margin: 6px 6px;          /* เพิ่มช่องว่างระหว่างการ์ด */
-  border-radius: 10px;
-  box-shadow: 0 1px 0 rgba(17,20,24,.04);
-}
-.itin-cardrow:hover { box-shadow: 0 2px 6px rgba(17,20,24,.06); }
-
-/* 6) ไอคอนชิปเล็กลงนิด ไม่กินพื้นที่ */
-.itin-cardrow-icon {
-  width: 42px;
-  height: 42px;
-}
-.itin-cardrow-icon .icon { font-size: 18px; }
-
-/* 7) ตัวอักษรและบรรทัดย่อมลงเล็กน้อยให้ดูแน่น */
-.itin-cardrow-text .title,
-.itin-cardrow-text .title-itin { font-size: 15px; margin-bottom: 2px; }
-.itin-cardrow-text .sub { font-size: 12.5px; }
-
-/* 8) รายการในสรุปซ้ายให้เป็นบล็อกต่อเนื่อง ดูไม่แบน */
-.itin-summary .itin-cardrow {
-  margin: 0;                 /* ชิดกันให้เป็นก้อน */
-  border-radius: 0;
-  box-shadow: inset 0 -1px 0 var(--divider);
-}
-.itin-summary .itin-cardrow:first-child { border-top-left-radius: 12px; border-top-right-radius: 12px; }
-.itin-summary .itin-cardrow:last-child  { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; box-shadow: none; }
-
-/* 9) ปุ่มพิมพ์ชิดคอนเทนต์หลักขึ้นเล็กน้อย (ยัง fixed ตำแหน่งเดิม) */
-.fab-print { right: 24px; bottom: 24px; }
-
-/* 10) มือถือ – ลดเงา/ขอบนิดหน่อยให้ลื่นตา */
-@media (max-width: 960px) {
-  .itin-summary { box-shadow: 0 1px 1px rgba(17,20,24,.03); }
-  .itin-content > section { margin-bottom: 12px; }
-  .itin-section-title { font-size: 16px; }
+  .itin-cardrow {
+    margin: 4px 0;
+    box-shadow: none;
+    border: 1px solid #eaeef4;
+  }
 }
