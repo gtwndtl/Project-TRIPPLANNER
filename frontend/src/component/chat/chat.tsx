@@ -22,6 +22,13 @@ import { useUserId } from "../../hooks/useUserId";
 import type { UserInterface } from "../../interfaces/User";
 import { Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+
+// ====== LocalStorage keys (สำหรับ Guest) ======
+const LOCAL_GUEST_TRIP_PLAN_TEXT = "guest_trip_plan_text";
+const LOCAL_GUEST_ROUTE_DATA = "guest_route_data";
+const LOCAL_GUEST_ACTIVITIES = "guest_activities";
+const LOCAL_GUEST_META = "guest_meta"; // { keyword, days, placeId, placeName, time }
 
 // ===== util: ดึงรูปจากแลนด์มาร์ก =====
 const getPlaceImage = (p?: Partial<LandmarkInterface> | null) =>
@@ -87,7 +94,7 @@ function parseTripPlanTextToActivities(text: string) {
   return activities;
 }
 
-// ฟังก์ชันช่วยจัดรูปแบบข้อความแผนทริปให้อ่านง่าย (เหมือนโค้ดแรก)
+// ฟังก์ชันช่วยจัดรูปแบบข้อความแผนทริปให้อ่านง่าย
 const formatTripPlanText = (text: string) => {
   const lines = text.split("\n");
 
@@ -126,8 +133,9 @@ const formatTripPlanText = (text: string) => {
   });
 };
 
+// ===== saveTripCondition: guest จะไม่บันทึก =====
 const saveTripCondition = async (
-  userId: number,
+  userId: number | null | undefined,
   tripDetails?: { day: string | number; price: number; accommodation: string; landmark: string; style: string }
 ) => {
   try {
@@ -140,6 +148,19 @@ const saveTripCondition = async (
       return;
     }
 
+    // ถ้า guest → ไม่เรียก API (เก็บได้ถ้าต้องการ)
+    if (!userId) {
+      localStorage.setItem(
+        LOCAL_GUEST_META,
+        JSON.stringify({
+          ...(JSON.parse(localStorage.getItem(LOCAL_GUEST_META) || "{}")),
+          guestCondition: tripDetails,
+        })
+      );
+      return;
+    }
+
+    // ผู้ใช้ปกติ → บันทึกลง backend
     const payload = {
       User_id: userId,
       Day: tripDetails.day.toString(),
@@ -149,14 +170,13 @@ const saveTripCondition = async (
       Style: tripDetails.style,
     };
 
-    const res = await CreateCondition(payload);
-    console.log("[Condition] บันทึกเงื่อนไขทริปสำเร็จ:", res);
+    await CreateCondition(payload);
   } catch (error) {
     console.error("[Condition] เกิดข้อผิดพลาดในการบันทึกเงื่อนไขทริป", error);
   }
 };
 
-// ====== Message Types (เพิ่มชนิด days-prompt + days-quickpick) ======
+// ====== Message Types ======
 type Msg =
   | { id: string; role: "ai" | "user"; text: string; isTripPlan?: false; kind?: "text" }
   | { id: string; role: "ai"; text: string; isTripPlan: true; kind?: "text" }
@@ -165,6 +185,9 @@ type Msg =
 
 const TripChat = () => {
   const userIdNum = useUserId();
+  const isPreviewOnly = !userIdNum; // ✅ guest mode เมื่อไม่มี userId
+  const navigate = useNavigate();
+
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(false);
@@ -177,6 +200,16 @@ const TripChat = () => {
       text: 'สวัสดีค่ะ! ฉันช่วยวางแผนทริปให้คุณได้เลย ลองบอกมาว่าคุณอยากไปที่ไหน? เช่น "ฉันอยากไปวัดพระแก้ว 3 วัน"',
       kind: "text",
     },
+    ...(isPreviewOnly
+      ? [
+          {
+            id: crypto.randomUUID(),
+            role: "ai",
+            text: "โหมดพรีวิว: คุณสามารถสร้างและดูแผนได้ แต่ยังไม่บันทึกลงระบบ หากต้องการบันทึก โปรดล็อกอิน",
+            kind: "text",
+          } as Msg,
+        ]
+      : []),
   ]);
 
   const [suggestedPlaces, setSuggestedPlaces] = useState<LandmarkInterface[]>([]);
@@ -219,7 +252,7 @@ const TripChat = () => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const data = await GetUserById(userIdNum);
+        const data = await GetUserById(userIdNum as number);
         setUser(data);
       } catch (e) {
         console.error("โหลดข้อมูลผู้ใช้ล้มเหลว", e);
@@ -312,9 +345,31 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         // แสดงแผนแบบจัดรูป (formatTripPlanText)
         pushBot(tripPlanText, true);
 
-        // ====== CreateCondition ======
+        // ====== โหมดพรีวิว: ไม่บันทึกอะไรลงระบบ ======
+        if (isPreviewOnly) {
+          const activities = parseTripPlanTextToActivities(tripPlanText || "");
+          // เก็บทุกอย่างไว้ให้หน้า Preview
+          localStorage.setItem(LOCAL_GUEST_TRIP_PLAN_TEXT, tripPlanText);
+          localStorage.setItem(LOCAL_GUEST_ROUTE_DATA, JSON.stringify(routeData));
+          localStorage.setItem(LOCAL_GUEST_ACTIVITIES, JSON.stringify(activities));
+          localStorage.setItem(
+            LOCAL_GUEST_META,
+            JSON.stringify({
+              keyword,
+              days,
+              placeId: id,
+              placeName: selectedPlace?.Name ?? keyword,
+              time: new Date().toISOString(),
+            })
+          );
+          // ไปหน้า Preview
+          navigate("/guest/preview");
+          return;
+        }
+
+        // ====== โหมดล็อกอิน: ทำ flow บันทึกเดิม ======
         const conditionPayload = {
-          User_id: userIdNum,
+          User_id: userIdNum as number,
           Day: days.toString(),
           Price: 5000,
           Accommodation: "โรงแรม",
@@ -330,7 +385,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
           console.error("[Condition] create failed, using default Con_id=1", err);
         }
 
-        // ====== CreateTrip ======
+        // CreateTrip
         const accIdStr = routeData.accommodation?.id ?? "";
         const accIdNum = parseInt(accIdStr.replace(/[^\d]/g, ""), 10);
 
@@ -343,20 +398,16 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         };
 
         const savedTrip = await CreateTrip(newTrip);
-        // pushBot(`บันทึกทริปสำเร็จ! (ID: ${savedTrip.ID})`);
         localStorage.setItem("TripID", savedTrip.ID!.toString());
 
-        // ====== Save shortest paths ======
+        // Save shortest paths
         const activities = parseTripPlanTextToActivities(tripPlanText || "");
         let PathIndex = 1;
         const dayPlanIndices: { [day: number]: number } = {};
 
         for (const act of activities) {
           if (!routeData.trip_plan_by_day || !Array.isArray(routeData.trip_plan_by_day)) {
-            console.error(
-              "routeData.trip_plan_by_day is missing or not an array:",
-              routeData.trip_plan_by_day
-            );
+            console.error("routeData.trip_plan_by_day is missing or not an array:", routeData.trip_plan_by_day);
             pushBot("เกิดข้อผิดพลาดในการดึงข้อมูลแผนทริป กรุณาลองใหม่");
             return;
           }
@@ -446,7 +497,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         setLoading(false);
       }
     },
-    [userIdNum]
+    [isPreviewOnly, navigate, selectedPlace?.Name, userIdNum]
   );
 
   // คลิก quick-pick วัน
@@ -458,7 +509,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       }
       setSelectedPlaceDays(days);
 
-      // บันทึกเงื่อนไขก่อน
+      // บันทึกเงื่อนไขก่อน (guest → ไม่เรียก API)
       const tripDetails = {
         day: days.toString(),
         price: 5000,
@@ -562,8 +613,8 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
                 landmark: place?.Name || "",
                 style: "ชิวๆ",
               };
-              await saveTripCondition(userIdNum, tripDetails);
-              await generateRouteAndPlan(place.ID!, place.Name!, selectedPlaceDays);
+                await saveTripCondition(userIdNum, tripDetails);
+                await generateRouteAndPlan(place.ID!, place.Name!, selectedPlaceDays);
 
               setAwaitingConfirm(false);
               setSelectedPlace(null);
