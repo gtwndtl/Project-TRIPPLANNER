@@ -78,10 +78,39 @@
   display: flex;
   gap: 32px;
   border-bottom: 1px solid var(--divider);
+
+  /* บังคับให้กว้างเต็ม */
+  width: 100%!important;
+  max-width: 100%!important;
+
+  box-sizing: border-box;
 }
 
 .ant-tabs-nav {
-  margin-left: 16px !important;
+  width: 100%;
+}
+/* ให้ทุกชั้นกินเต็ม */
+.itin-tabs .ant-tabs,
+.itin-tabs .ant-tabs-nav,
+.itin-tabs .ant-tabs-nav-wrap,
+.itin-tabs .ant-tabs-nav-list {
+  width: 100%;
+}
+
+/* ถ้าอยากให้แท็บอยู่กลางเฉย ๆ */
+.itin-tabs .ant-tabs-nav-list {
+  justify-content: center;
+}
+
+/* ถ้าอยากให้แต่ละแท็บ “ยืดเท่ากันเต็มแถบ” ให้ใช้ชุดนี้แทน */
+.itin-tabs .ant-tabs-nav-list {
+  display: flex;
+  justify-content: space-between;
+}
+.itin-tabs .ant-tabs-tab {
+  flex: 1;
+  min-width: 0;            /* กันข้อความยาวดันแตก layout */
+  justify-content: center; /* ข้อความกลางแท็บ */
 }
 
 .itin-tabs .tab--active {
