@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// src/page/itinerary-recommend/TripItineraryRecommend.tsx
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   CalendarOutlined,
   EnvironmentOutlined,
@@ -12,7 +19,7 @@ import { GetTripById, GetConditionById, GetAllReviews } from "../../services/htt
 import type { TripInterface } from "../../interfaces/Trips";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { ReviewInterface } from "../../interfaces/review";
-import { Button, Empty, Spin, message, Tooltip } from "antd"; // 👈 เพิ่ม Tooltip ตรงนี้
+import { Button, Empty, Spin, message, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 
 import "./itinerary-print.css";
@@ -51,6 +58,23 @@ const TripItineraryRecommend: React.FC = () => {
   const [condition, setCondition] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
+  // ==== Refs สำหรับเลื่อนขึ้นบนสุดใน container ที่สกอร์ลจริง ====
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const scrollTopNow = useCallback(() => {
+    // เลื่อนกล่องเนื้อหา (ถ้าเป็นตัวที่มี overflow)
+    contentRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // เลื่อน container (กันกรณีสกอร์ลที่ตัวนี้)
+    containerRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // เลื่อนทั้งเอกสาร (สำรองให้ครบทุก browser)
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.scrollingElement?.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  // ตรวจว่าทริปนี้มีรีวิวไหม ไม่มีกลับ trip-chat
   useEffect(() => {
     const checkReview = async () => {
       try {
@@ -74,8 +98,12 @@ const TripItineraryRecommend: React.FC = () => {
         const tripRes = await GetTripById(id);
         setTrip(tripRes || null);
         const conId = Number(tripRes?.Con_id);
-        if (conId) setCondition((await GetConditionById(conId)) || null);
-        else setCondition(null);
+        if (conId) {
+          const c = await GetConditionById(conId);
+          setCondition(c || null);
+        } else {
+          setCondition(null);
+        }
       } catch {
         msg.error("โหลดข้อมูลทริปล้มเหลว");
       } finally {
@@ -92,6 +120,29 @@ const TripItineraryRecommend: React.FC = () => {
     }
     void refreshTrip(activeTripId);
   }, [activeTripId, refreshTrip, msg]);
+
+  // เข้าหน้านี้: ปิด scroll restoration ของ browser แล้วเลื่อนขึ้นบนสุด
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      const prev = window.history.scrollRestoration as ScrollRestoration;
+      window.history.scrollRestoration = "manual";
+      scrollTopNow();
+      return () => {
+        window.history.scrollRestoration = prev ?? "auto";
+      };
+    }
+    scrollTopNow();
+  }, [scrollTopNow]);
+
+  // เปลี่ยน tripId: เลื่อนขึ้นบนสุดหลัง DOM วาด
+  useEffect(() => {
+    requestAnimationFrame(scrollTopNow);
+  }, [activeTripId, scrollTopNow]);
+
+  // หลังดึงทริปเสร็จ (เนื้อหาสูงขึ้น): เลื่อนขึ้นบนสุดอีกครั้งให้ชัวร์
+  useEffect(() => {
+    if (trip) requestAnimationFrame(scrollTopNow);
+  }, [trip, scrollTopNow]);
 
   const groupedByDay = useMemo(() => {
     return (
@@ -126,7 +177,7 @@ const TripItineraryRecommend: React.FC = () => {
   return (
     <div className="itin-root">
       {contextHolder}
-      <div className="itin-container">
+      <div className="itin-container" ref={containerRef}>
         <aside className="itin-summary">
           <div
             className="itin-title-row"
@@ -137,7 +188,6 @@ const TripItineraryRecommend: React.FC = () => {
             </p>
           </div>
 
-          {/* เดิมใช้ Tabs → เปลี่ยนเป็นแสดงเนื้อหาแบบปกติ */}
           <div className="itin-details">
             {[
               { icon: "calendar" as const, title: trip?.Days ? `${trip.Days} วัน` : "—", subtitle: "ระยะเวลา" },
@@ -158,9 +208,12 @@ const TripItineraryRecommend: React.FC = () => {
           </div>
         </aside>
 
-
-        <main className="itin-content">
-          {loading && <div className="itin-loading"><Spin /></div>}
+        <main className="itin-content" ref={contentRef}>
+          {loading && (
+            <div className="itin-loading">
+              <Spin />
+            </div>
+          )}
 
           {!loading && !trip && (
             <div style={{ padding: 16 }}>
@@ -168,34 +221,48 @@ const TripItineraryRecommend: React.FC = () => {
             </div>
           )}
 
-          {!loading && trip && Object.entries(groupedByDay).map(([dayKey, activities]) => {
-            const dayNum = Number(dayKey);
-            return (
-              <section key={dayKey} className="no-print">
-                <div className="itin-day-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h2 className="itin-section-title" style={{ margin: 0 }}>{getDayHeaderText(dayNum)}</h2>
-                </div>
-                {activities.map((record, idx) => {
-                  const key = `${dayNum}:${idx}`;
-                  return (
-                    <div className="itin-cardrow" key={record.ID ?? key}>
-                      <div className="itin-cardrow-icon"><ItemIcon code={record.ToCode} /></div>
-                      <div className="itin-cardrow-text">
-                        <p
-                          className="title-itin"
-                          dangerouslySetInnerHTML={{
-                            __html: (record.ActivityDescription || "-").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
-                          }}
-                        />
-                        <p className="sub">{displayName(record.ToCode)}</p>
-                        <p className="sub">{record.StartTime} - {record.EndTime}</p>
+          {!loading &&
+            trip &&
+            Object.entries(groupedByDay).map(([dayKey, activities]) => {
+              const dayNum = Number(dayKey);
+              return (
+                <section key={dayKey} className="no-print">
+                  <div
+                    className="itin-day-header"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  >
+                    <h2 className="itin-section-title" style={{ margin: 0 }}>
+                      {getDayHeaderText(dayNum)}
+                    </h2>
+                  </div>
+                  {activities.map((record, idx) => {
+                    const key = `${dayNum}:${idx}`;
+                    return (
+                      <div className="itin-cardrow" key={record.ID ?? key}>
+                        <div className="itin-cardrow-icon">
+                          <ItemIcon code={record.ToCode} />
+                        </div>
+                        <div className="itin-cardrow-text">
+                          <p
+                            className="title-itin"
+                            dangerouslySetInnerHTML={{
+                              __html: (record.ActivityDescription || "-").replace(
+                                /\*\*(.*?)\*\*/g,
+                                "<strong>$1</strong>"
+                              ),
+                            }}
+                          />
+                          <p className="sub">{displayName(record.ToCode)}</p>
+                          <p className="sub">
+                            {record.StartTime} - {record.EndTime}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </section>
-            );
-          })}
+                    );
+                  })}
+                </section>
+              );
+            })}
 
           {trip && (
             <TripItineraryPrintSheet
@@ -208,6 +275,7 @@ const TripItineraryRecommend: React.FC = () => {
           )}
         </main>
       </div>
+
       <div className="fab-print no-print" aria-hidden={false}>
         <Tooltip title="พิมพ์เป็น PDF" placement="left">
           <Button

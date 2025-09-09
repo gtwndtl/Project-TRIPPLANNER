@@ -1,15 +1,25 @@
-
+/* ===== Navbar (sticky on top) ===== */
 .navbar {
+  position: sticky;          /* ทำให้แถบติดด้านบนเมื่อถึงขอบ */
+  top: 0;
+  z-index: 1100;             /* ให้อยู่เหนือคอนเทนต์อื่น */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #f0f2f5;
+
   padding: 12px 40px;
-  background-color: #fff;
-  color: #111418;
   box-sizing: border-box;
+
+  /* พื้นหลังโปร่งนิด+เบลอ จะสวยกว่าทึบสนิทเมื่อซ้อนกับรูป */
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+
+  color: #111418;
+  border-bottom: 1px solid #f0f2f5;
 }
 
+/* โครงเดิม */
 .navbar-left {
   display: flex;
   align-items: center;
@@ -54,7 +64,6 @@
   opacity: 0.8;
 }
 
-
 @media (max-width: 900px) {
   .navbar-links {
     display: none;
@@ -62,4 +71,31 @@
   .navbar {
     padding: 12px 20px;
   }
+}
+
+/* ====== (ตัวเลือกสำรอง) ถ้า sticky ไม่ทำงานเพราะพาเรนต์มี overflow ====== */
+/* ใช้คลาส .navbar--fixed แทน .navbar เพื่อตรึงจริงๆ */
+.navbar--fixed {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1100;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 12px 40px;
+  box-sizing: border-box;
+
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+
+  color: #111418;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+/* ถ้าใช้ .navbar--fixed ให้เว้นที่ด้านบนคอนเทนต์กันทับ */
+.navbar-spacer {
+  height: 56px; /* ปรับให้เท่าความสูง navbar ของจริง */
 }

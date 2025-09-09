@@ -22,6 +22,7 @@ import type { TripInterface } from "../../interfaces/Trips";
 import type { ConditionInterface } from "../../interfaces/Condition";
 import type { LandmarkInterface } from "../../interfaces/Landmark";
 import type { UserInterface } from "../../interfaces/User";
+import SiteFooter from "../footer/footer";
 
 const FALLBACK_THUMB_URL =
   "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop";
@@ -34,11 +35,75 @@ type EnrichedReview = {
   thumb: string;
 };
 
+// ---------- helpers: preload / cache ----------
+const preloadImages = (urls: string[]) => {
+  urls.filter(Boolean).forEach((u) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.loading = "eager";
+    img.src = u;
+  });
+};
+
+const CACHE_KEY = "landing:topTrips:v1";
+const CACHE_TTL = 10 * 60 * 1000; // 10 นาที
+
+const readTopTripsCache = (): EnrichedReview[] | null => {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { savedAt, data } = JSON.parse(raw) || {};
+    if (!Array.isArray(data) || typeof savedAt !== "number") return null;
+    if (Date.now() - savedAt > CACHE_TTL) return null;
+    return data as EnrichedReview[];
+  } catch {
+    return null;
+  }
+};
+
+const writeTopTripsCache = (items: EnrichedReview[]) => {
+  try {
+    sessionStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ savedAt: Date.now(), data: items })
+    );
+  } catch {
+    /* ignore */
+  }
+};
+
+const HERO_IMAGES = [a1, a2, a3, a4, a5];
+
 const Landing: React.FC = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState<boolean>(false);
   const [topTrips, setTopTrips] = useState<EnrichedReview[]>([]);
+
+  // พรีโหลดรูป Hero หนึ่งครั้งต่อเซสชัน
+  useEffect(() => {
+    if (sessionStorage.getItem("HERO_PRELOADED_V1") !== "1") {
+      preloadImages(HERO_IMAGES);
+      sessionStorage.setItem("HERO_PRELOADED_V1", "1");
+    }
+  }, []);
+
+  // preconnect ไป unsplash เพื่อให้ handshake เร็วขึ้น
+  useEffect(() => {
+    const hosts = ["https://images.unsplash.com", "https://plus.unsplash.com"];
+    const links: HTMLLinkElement[] = [];
+    hosts.forEach((h) => {
+      const l = document.createElement("link");
+      l.rel = "preconnect";
+      l.href = h;
+      l.crossOrigin = "anonymous";
+      document.head.appendChild(l);
+      links.push(l);
+    });
+    return () => {
+      links.forEach((l) => document.head.removeChild(l));
+    };
+  }, []);
 
   // ===== Helpers =====
   const toNum = (v: unknown) => {
@@ -85,7 +150,7 @@ const Landing: React.FC = () => {
     return FALLBACK_THUMB_URL;
   };
 
-  // ===== Load top 4 trips (by highest review rate) =====
+  // ===== Load top 4 trips (with cache) =====
   const loadTopTrips = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,6 +162,7 @@ const Landing: React.FC = () => {
 
       if (!Array.isArray(reviews) || reviews.length === 0) {
         setTopTrips([]);
+        writeTopTripsCache([]);
         return;
       }
 
@@ -123,213 +189,209 @@ const Landing: React.FC = () => {
         .filter(Boolean) as EnrichedReview[];
 
       enriched.sort((a, b) => toNum(b.review.Rate) - toNum(a.review.Rate));
-      setTopTrips(enriched.slice(0, 4));
+      const top = enriched.slice(0, 4);
+
+      setTopTrips(top);
+      writeTopTripsCache(top);
+
+      // พรีโหลดรูปท็อปทริป (สำหรับรอบถัดไป)
+      preloadImages(top.map((t) => t.thumb));
     } catch (err) {
       console.error("loadTopTrips error:", err);
       setTopTrips([]);
+      writeTopTripsCache([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void loadTopTrips(); }, [loadTopTrips]);
+  // เสิร์ฟจากแคชก่อน แล้วค่อย revalidate แบบเงียบ ๆ
+  useEffect(() => {
+    const cached = readTopTripsCache();
+    if (cached) {
+      setTopTrips(cached);
+      setLoading(false);
+      // revalidate เบื้องหลังถ้าอยู่นอก TTL
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      const stale =
+        !raw ||
+        (function () {
+          try {
+            const { savedAt } = JSON.parse(raw) || {};
+            return Date.now() - (savedAt || 0) > CACHE_TTL;
+          } catch {
+            return true;
+          }
+        })();
+      if (stale) void loadTopTrips();
+    } else {
+      void loadTopTrips();
+    }
+  }, [loadTopTrips]);
 
   const hasRecs = useMemo(() => topTrips.length > 0, [topTrips]);
 
   return (
-    <div className="landing-container">
-      <div className="landing-content-wrapper">
-        {/* Hero Section */}
-        <section className="landing-hero">
-          <div className="landing-hero-stage">
-            <Carousel
-              className="landing-hero-carousel"
-              arrows
-              autoplay
-              autoplaySpeed={3000}
-              dots
-              draggable
-            >
-              {[a1, a2, a3, a4, a5].map((img, idx) => (
-                <div key={idx}>
-                  <div
-                    className="landing-hero-slide"
-                    style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.40) 100%), url(${img})` }}
-                  />
+    <>
+      <div className="landing-container">
+        <div className="landing-content-wrapper">
+          {/* Hero Section */}
+          <section className="landing-hero">
+            <div className="landing-hero-stage">
+              <Carousel
+                className="landing-hero-carousel"
+                arrows
+                autoplay
+                autoplaySpeed={3000}
+                dots
+                draggable
+              >
+                {HERO_IMAGES.map((img, idx) => (
+                  <div key={idx}>
+                    <div
+                      className="landing-hero-slide"
+                      style={{
+                        backgroundImage: `linear-gradient(rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.40) 100%), url(${img})`,
+                      }}
+                    />
+                  </div>
+                ))}
+              </Carousel>
+
+              <div className="landing-hero-overlay">
+                <div className="landing-hero-text">
+                  <h1 className="landing-hero-title">TRIP PLANNER</h1>
+                  <h2 className="landing-hero-subtitle">วางแผนการเดินทางโดยง่ายเพียงแค่ระบุสถานที่</h2>
                 </div>
-              ))}
-            </Carousel>
 
-            <div className="landing-hero-overlay">
-              <div className="landing-hero-text">
-                <h1 className="landing-hero-title">TRIP PLANNER</h1>
-                <h2 className="landing-hero-subtitle">วางแผนการเดินทางโดยง่ายเพียงแค่ระบุสถานที่</h2>
-              </div>
-
-              <button className="button" onClick={() => navigate("/trip-chat")}>
-                <span className="button_lg">
-                  <span className="button_sl"></span>
-                  <span className="button_text">เริ่มต้นการวางแผน</span>
-                </span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section className="landing-how-it-works">
-          <div className="landing-section-header">
-            <h1 className="landing-section-title">How it works</h1>
-            <p className="landing-section-description">
-              เพียงไม่กี่ขั้นตอน ระบบก็สามารถสร้างแผนการเดินทางที่เหมาะสมและพร้อมใช้งานสำหรับคุณ
-            </p>
-          </div>
-
-          <div className="landing-steps-grid">
-            <div className="landing-step-card">
-              <div className="landing-step-icon">
-                <CompassOutlined style={{ fontSize: 28, color: "#111418" }} />
-              </div>
-              <div className="landing-step-text">
-                <h2 className="landing-step-title">Tell us your destination</h2>
-                <p className="landing-step-description">แจ้งจุดหมายปลายทางที่คุณต้องการเดินทางไป</p>
+                <button className="button" onClick={() => navigate("/trip-chat")}>
+                  <span className="button_lg">
+                    <span className="button_sl"></span>
+                    <span className="button_text">เริ่มต้นการวางแผน</span>
+                  </span>
+                </button>
               </div>
             </div>
+          </section>
 
-            <div className="landing-step-card">
-              <div className="landing-step-icon">
-                <BranchesOutlined style={{ fontSize: 28, color: "#111418" }} />
-              </div>
-              <div className="landing-step-text">
-                <h2 className="landing-step-title">Algorithm processes your trip</h2>
-                <p className="landing-step-description">ระบบใช้อัลกอริทึมประมวลผลและสร้างแผนการเดินทางที่เหมาะสม</p>
-              </div>
+          {/* How It Works */}
+          <section className="landing-how-it-works">
+            <div className="landing-section-header">
+              <h1 className="landing-section-title">How it works</h1>
+              <p className="landing-section-description">
+                เพียงไม่กี่ขั้นตอน ระบบก็สามารถสร้างแผนการเดินทางที่เหมาะสมและพร้อมใช้งานสำหรับคุณ
+              </p>
             </div>
 
-            <div className="landing-step-card">
-              <div className="landing-step-icon">
-                <ScheduleOutlined style={{ fontSize: 28, color: "#111418" }} />
+            <div className="landing-steps-grid">
+              <div className="landing-step-card">
+                <div className="landing-step-icon">
+                  <CompassOutlined style={{ fontSize: 28, color: "#111418" }} />
+                </div>
+                <div className="landing-step-text">
+                  <h2 className="landing-step-title">Tell us your destination</h2>
+                  <p className="landing-step-description">แจ้งจุดหมายปลายทางที่คุณต้องการเดินทางไป</p>
+                </div>
               </div>
-              <div className="landing-step-text">
-                <h2 className="landing-step-title">Use your itinerary</h2>
-                <p className="landing-step-description">นำแผนการเดินทางไปใช้จริงหรือปรับแก้ตามความต้องการ</p>
+
+              <div className="landing-step-card">
+                <div className="landing-step-icon">
+                  <BranchesOutlined style={{ fontSize: 28, color: "#111418" }} />
+                </div>
+                <div className="landing-step-text">
+                  <h2 className="landing-step-title">Algorithm processes your trip</h2>
+                  <p className="landing-step-description">ระบบใช้อัลกอริทึมประมวลผลและสร้างแผนการเดินทางที่เหมาะสม</p>
+                </div>
+              </div>
+
+              <div className="landing-step-card">
+                <div className="landing-step-icon">
+                  <ScheduleOutlined style={{ fontSize: 28, color: "#111418" }} />
+                </div>
+                <div className="landing-step-text">
+                  <h2 className="landing-step-title">Use your itinerary</h2>
+                  <p className="landing-step-description">นำแผนการเดินทางไปใช้จริงหรือปรับแก้ตามความต้องการ</p>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Journey Inspirations (4 ใบ, จัดแพทเทิร์นและสลับฝั่งได้) */}
-        <section className="landing-inspire">
-          <div className="landing-section-header">
-            <h1 className="landing-section-title">Journey Inspirations from Travelers</h1>
-            <p className="landing-section-description">Dive into unique trip itineraries crafted by our global travelers.</p>
-          </div>
+          {/* Journey Inspirations */}
+          <section className="landing-inspire">
+            <div className="landing-section-header">
+              <h1 className="landing-section-title">Journey Inspirations from Travelers</h1>
+              <p className="landing-section-description">
+                Dive into unique trip itineraries crafted by our global travelers.
+              </p>
+            </div>
 
-          {loading && <div className="landing-recs-state"><Spin /></div>}
+            {loading && <div className="landing-recs-state"><Spin /></div>}
 
-          {!loading && topTrips.length === 0 && (
-            <div className="landing-recs-state"><Empty description="ยังไม่มีทริปแนะนำ" /></div>
-          )}
+            {!loading && topTrips.length === 0 && (
+              <div className="landing-recs-state"><Empty description="ยังไม่มีทริปแนะนำ" /></div>
+            )}
 
-          {!loading && hasRecs && (
-            // เพิ่ม "swap" ถ้าต้องการสลับซ้าย/ขวา
-            <div className="inspire-flex alt-stagger">
-              {topTrips.map(({ review, trip, user, thumb }, idx) => {
-                const tripId = (trip as any)?.ID;
-                const title = (trip as any)?.Name?.toString?.() || "-";
-                const rate = Number(review.Rate) || 0;
-                const userName =
-                  user && (user.Firstname || user.Lastname)
-                    ? `${user.Firstname ?? ""} ${user.Lastname ?? ""}`.trim()
-                    : `User ${(review as any)?.User_id}`;
+            {!loading && hasRecs && (
+              <div className="inspire-flex alt-stagger">
+                {topTrips.map(({ review, trip, user, thumb }, idx) => {
+                  const tripId = (trip as any)?.ID;
+                  const title = (trip as any)?.Name?.toString?.() || "-";
+                  const rate = Number(review.Rate) || 0;
+                  const userName =
+                    user && (user.Firstname || user.Lastname)
+                      ? `${user.Firstname ?? ""} ${user.Lastname ?? ""}`.trim()
+                      : `User ${(review as any)?.User_id}`;
 
-                // ขนาดตามแพทเทิร์น 4 ใบ
-                const layoutIdx = idx % 4; // 0..3
-                const sizeClass =
-                  layoutIdx === 2 ? "is-tall" :
-                    layoutIdx === 3 ? "is-short" : "is-regular";
+                  const layoutIdx = idx % 4;
+                  const sizeClass =
+                    layoutIdx === 2 ? "is-tall" :
+                      layoutIdx === 3 ? "is-short" : "is-regular";
 
-                return (
-                  <article
-                    key={tripId ?? idx}
-                    className={`inspire-card ${sizeClass}`}
-                    onClick={() => navigate(`/itinerary/recommend/${tripId}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && navigate(`/itinerary/recommend/${tripId}`)}
-                  >
-                    <div className="inspire-cover" style={{ backgroundImage: `url(${thumb})` }} />
-                    <div className="inspire-info">
-                      <div className="inspire-user">
-                        <span className="inspire-avatar" aria-hidden />
-                        <span className="inspire-username">{userName}</span>
+                  // ภาพการ์ด: ใช้ <img> เพื่อให้ lazy-load/แคชได้เต็มประสิทธิภาพ
+                  return (
+                    <article
+                      key={tripId ?? idx}
+                      className={`inspire-card ${sizeClass}`}
+                      onClick={() => navigate(`/itinerary/recommend/${tripId}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === "Enter" && navigate(`/itinerary/recommend/${tripId}`)}
+                    >
+                      <div className="inspire-cover">
+                        <img
+                          className="inspire-cover-img"
+                          src={thumb}
+                          alt=""
+                          loading={idx === 0 ? "eager" : "lazy"}
+                          decoding="async"
+                          sizes="(min-width:1024px) 600px, 100vw"
+                          fetchPriority={idx === 0 ? "high" : "low"}
+                        />
                       </div>
-                      <h3 className="inspire-title">{title}</h3>
-                      <div className="inspire-meta">
-                        <Tooltip title={`${rate}/5`}>
-                          <span className="inspire-chip"><StarFilled /> {rate}</span>
-                        </Tooltip>
+
+                      <div className="inspire-info">
+                        <div className="inspire-user">
+                          <span className="inspire-avatar" aria-hidden />
+                          <span className="inspire-username">{userName}</span>
+                        </div>
+                        <h3 className="inspire-title">{title}</h3>
+                        <div className="inspire-meta">
+                          <Tooltip title={`${rate}/5`}>
+                            <span className="inspire-chip"><StarFilled /> {rate}</span>
+                          </Tooltip>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* ===== Footer ===== */}
-        <footer className="site-footer">
-          <div className="footer-inner">
-            <div className="footer-grid">
-              {/* Brand */}
-              <div className="footer-col">
-                <h3 className="footer-brand">TRIP PLANNER</h3>
+                    </article>
+                  );
+                })}
               </div>
-
-              {/* Quick Links */}
-              <div className="footer-col">
-                <h4 className="footer-title">Product</h4>
-                <ul className="footer-links">
-                  <li><a onClick={() => navigate("/trip-chat")}>Trip Chat</a></li>
-                  <li><a onClick={() => navigate("/itinerary/explore")}>Explore Trips</a></li>
-                </ul>
-              </div>
-
-              {/* Resources */}
-              <div className="footer-col">
-                <h4 className="footer-title">Resources</h4>
-                <ul className="footer-links">
-                  <li><a href="#faq">FAQ</a></li>
-                  <li><a href="#how-it-works">How it works</a></li>
-                  <li><a href="#contact">Support</a></li>
-                </ul>
-              </div>
-
-              {/* Contact */}
-              <div className="footer-col">
-                <h4 className="footer-title">Contact</h4>
-                <ul className="footer-links">
-                  <li><a href="mailto:support@tripplanner.app">support@tripplanner.app</a></li>
-                  <li><a href="#">Feedback</a></li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="footer-bottom">
-              <span>© {new Date().getFullYear()} Trip Planner</span>
-              <nav className="footer-bottom-links">
-                <a href="#">Privacy</a>
-                <a href="#">Terms</a>
-                <a href="#">Status</a>
-              </nav>
-            </div>
-          </div>
-        </footer>
-
-
+            )}
+          </section>
+        </div>
       </div>
-    </div>
+
+      <SiteFooter />
+    </>
   );
 };
 

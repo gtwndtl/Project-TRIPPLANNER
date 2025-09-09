@@ -494,3 +494,16 @@
     border: 1px solid #eaeef4;
   }
 }
+/* เดิม: top: 20px;  →  เปลี่ยนให้หลบ navbar */
+.itin-summary{
+  position: sticky;
+  top: calc(var(--nav-h) + 20px + env(safe-area-inset-top));
+  z-index: 2; /* อยู่ใต้ navbar แต่เหนือคอนเทนต์อื่น ๆ */
+}
+
+/* มือถือ */
+@media (max-width: 960px){
+  .itin-summary{
+    top: calc(var(--nav-h) + 12px + env(safe-area-inset-top));
+  }
+}

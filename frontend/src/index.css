@@ -18,3 +18,17 @@ textarea,
 .navbar a {
   text-decoration: none;
 }
+
+:root{
+  --nav-h: 56px;                  /* ความสูงจริงของ navbar */
+}
+
+/* ใช้กับ .navbar (sticky) */
+.navbar{
+  height: var(--nav-h);           /* ฟิกส่วนสูงให้แน่นอน */
+}
+
+/* ถ้าใช้ .navbar--fixed ก็ให้ความสูงเท่ากัน */
+.navbar--fixed{
+  height: var(--nav-h);
+}
