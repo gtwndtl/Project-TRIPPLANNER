@@ -70,7 +70,6 @@ const TripRecommendations: React.FC = () => {
   const isFresh = (t: number) => Date.now() - t < TTL_MS;
 
   const unique = <T,>(arr: T[]) => Array.from(new Set(arr));
-  const safeDateLabel = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : "-");
   const toNum = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
 
   const mapFromArray = <T, K extends string | number>(arr: T[], key: (x: T) => K | null | undefined) => {
@@ -136,16 +135,6 @@ const TripRecommendations: React.FC = () => {
     return a.slice(0, m);
   };
 
-  const StarRating: React.FC<{ rate: number; outOf?: number }> = ({ rate, outOf = 5 }) => {
-    const filled = Math.max(0, Math.min(outOf, Math.round(rate)));
-    return (
-      <div className="reco-stars" aria-label={`Rating: ${filled} stars`}>
-        {Array.from({ length: outOf }).map((_, i) => (
-          <StarFilled key={i} className={`reco-star ${i < filled ? "is-active" : ""}`} />
-        ))}
-      </div>
-    );
-  };
 
   const ReviewCard: React.FC<{
     item: EnrichedReview;
@@ -156,7 +145,6 @@ const TripRecommendations: React.FC = () => {
     const days = toNum(trip?.Days);
     const daysText = Number.isFinite(days) && days > 0 ? `${days} วัน` : "— วัน";
     const title = (trip as any)?.Name?.toString?.() || (condition as any)?.Landmark?.toString?.() || "-";
-    const whenText = safeDateLabel(review.Day);
     const navigate = useNavigate();
 
     const handleClick = () => {
