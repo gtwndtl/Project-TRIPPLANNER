@@ -17,7 +17,7 @@ import {
   GetUserById,
 } from "../../services/https";
 
-// ====== User Id from localStorage (เหมือนโค้ดแรก) ======
+// ====== User Id from localStorage ======
 import { useUserId } from "../../hooks/useUserId";
 import type { UserInterface } from "../../interfaces/User";
 import { Avatar } from "antd";
@@ -28,7 +28,7 @@ import { useNavigate } from "react-router-dom";
 const LOCAL_GUEST_TRIP_PLAN_TEXT = "guest_trip_plan_text";
 const LOCAL_GUEST_ROUTE_DATA = "guest_route_data";
 const LOCAL_GUEST_ACTIVITIES = "guest_activities";
-const LOCAL_GUEST_META = "guest_meta"; // { keyword, days, placeId, placeName, time }
+const LOCAL_GUEST_META = "guest_meta"; // { keyword, days, budget, placeId, placeName, time }
 
 // ===== util: ดึงรูปจากแลนด์มาร์ก =====
 const getPlaceImage = (p?: Partial<LandmarkInterface> | null) =>
@@ -44,8 +44,7 @@ function parseTripPlanTextToActivities(text: string) {
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l !== "");
-  const activities: Array<{ day: number; startTime: string; endTime: string; description: string }> =
-    [];
+  const activities: Array<{ day: number; startTime: string; endTime: string; description: string }> = [];
   let currentDay = 0;
 
   for (let i = 0; i < lines.length; i++) {
@@ -63,7 +62,7 @@ function parseTripPlanTextToActivities(text: string) {
     // เคส: "08:00 - 09:00 เช็คอินที่ ..."
     const timeDescInlineMatch = line.match(/^(\d{2}:\d{2})\s*[–\-]\s*(\d{2}:\d{2})\s+(.+)/);
     if (timeDescInlineMatch) {
-      const [, startTime, endTime, description] = timeDescInlineMatch;
+      const [, startTime, endTime, description] = timeDescInlineMatch as unknown as [string, string, string, string];
       activities.push({ day: currentDay, startTime, endTime, description });
       continue;
     }
@@ -82,7 +81,7 @@ function parseTripPlanTextToActivities(text: string) {
     // เคสพิเศษ: "20:00 เป็นต้นไป พักผ่อนที่ ..." → แปลงเป็น 20:00–21:00
     const singleLineSpecial = line.match(/^(\d{2}:\d{2})\s+(.+)/);
     if (singleLineSpecial) {
-      const [_, startTime, description] = singleLineSpecial;
+      const [_, startTime, description] = singleLineSpecial as unknown as [string, string, string];
       const [h, m] = startTime.split(":").map(Number);
       const endH = Math.min(h + 1, 23);
       const endTime = `${endH.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
@@ -177,11 +176,14 @@ const saveTripCondition = async (
 };
 
 // ====== Message Types ======
-type Msg =
+// เพิ่ม budget-prompt และ budget-quickpick
+export type Msg =
   | { id: string; role: "ai" | "user"; text: string; isTripPlan?: false; kind?: "text" }
   | { id: string; role: "ai"; text: string; isTripPlan: true; kind?: "text" }
   | { id: string; role: "ai"; kind: "days-prompt"; placeName: string; image?: string; text: string }
-  | { id: string; role: "ai"; kind: "days-quickpick"; choices: number[] };
+  | { id: string; role: "ai"; kind: "days-quickpick"; choices: number[] }
+  | { id: string; role: "ai"; kind: "budget-prompt"; text: string }
+  | { id: string; role: "ai"; kind: "budget-quickpick"; choices: number[] };
 
 const TripChat = () => {
   const userIdNum = useUserId();
@@ -219,6 +221,10 @@ const TripChat = () => {
   const [selectedPlaceDays, setSelectedPlaceDays] = useState<number | null>(null);
   const [awaitingDays, setAwaitingDays] = useState(false);
   const [lastSuggestKeyword, setLastSuggestKeyword] = useState<string>("");
+
+  // NEW: budget states
+  const [awaitingBudget, setAwaitingBudget] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
 
   const suggestions = ["ฉันอยากไปสยาม 3 วัน", "ฉันอยากไปสาธร", "ฉันอยากไปไหนก็ไม่รู้"];
 
@@ -261,16 +267,46 @@ const TripChat = () => {
     if (userIdNum) loadUser();
   }, [userIdNum]);
 
+  // ดึง keyword + days + budget จากข้อความผู้ใช้
   const extractKeywordAndDays = (text: string) => {
-    const match = text.match(/อยากไป(.*?)(\d+)\s*วัน/);
-    if (match) {
-      return { keyword: match[1].trim(), days: parseInt(match[2], 10) };
+    const t = text.replace(/\s+/g, " ").trim();
+
+    // days
+    let days: number | null = null;
+    const d1 = t.match(/(\d+)\s*วัน/);
+    if (d1) days = parseInt(d1[1], 10);
+
+    // budget parser
+    const parseBudget = (s: string): number | null => {
+      const km = s.match(/(\d+(?:[.,]\d+)?)\s*[kK]\b/);
+      if (km) return Math.round(parseFloat(km[1].replace(",", "")) * 1000);
+      const th = s.match(/(\d+)\s*(พัน|หมื่น)/);
+      if (th) {
+        const base = parseInt(th[1], 10);
+        const mul = th[2] === "หมื่น" ? 10000 : 1000;
+        return base * mul;
+      }
+      const n1 = s.match(/(\d[\d,\.]*)\s*(?:บาท|฿)?/);
+      if (n1) return Math.round(parseFloat(n1[1].replace(/[,]/g, "")));
+      return null;
+    };
+
+    let budget: number | null = null;
+    const b1 = t.match(/(?:งบ(?:ประมาณ)?|budget)\s*(?:ไม่เกิน|ประมาณ|ที่)?\s*([\d.,kK]+|\d+\s*(?:พัน|หมื่น))(?:\s*(?:บาท|฿))?/i);
+    if (b1) {
+      budget = parseBudget(b1[1]);
+    } else {
+      const b2 = t.match(/(\d[\d,\.]+)\s*(?:บาท|฿)/);
+      if (b2) budget = parseBudget(b2[1]);
     }
-    const match2 = text.match(/อยากไป\s*(.+)/);
-    if (match2) {
-      return { keyword: match2[1].trim(), days: null };
-    }
-    return null;
+
+    // keyword
+    let keyword: string | null = null;
+    const k1 = t.match(/อยากไป\s*(.*?)(?:\d+\s*วัน|$)/);
+    if (k1) keyword = k1[1].trim();
+
+    if (!keyword && !days && !budget) return null;
+    return { keyword: keyword ?? "", days, budget } as { keyword: string; days: number | null; budget: number | null };
   };
 
   const pushBot = (text: string, isPlan = false) =>
@@ -299,16 +335,45 @@ const TripChat = () => {
       },
     ]);
 
+  // การ์ดถามงบ + quickpick
+  const pushBotBudgetPrompt = (presetText?: string) =>
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "ai",
+        kind: "budget-prompt",
+        text: presetText ?? "งบประมาณรวมของทริปประมาณเท่าไหร่คะ? (พิมพ์ตัวเลข เช่น 5000 หรือ 5,000 หรือ 5k)",
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "ai",
+        kind: "budget-quickpick",
+        choices: [2000, 5000, 8000, 12000],
+      },
+    ]);
+
   const pushUser = (text: string) =>
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text, kind: "text" }]);
 
   // ---------- Core: generateRouteAndPlan ----------
+  // เพิ่ม budget?: number
   const generateRouteAndPlan = useCallback(
-    async (id: number, keyword: string, days: number) => {
+    async (id: number, keyword: string, days: number, budget?: number) => {
       try {
         setLoading(true);
-        pushBot(`กำลังสร้างแผนทริปสำหรับ "${keyword}" ${days} วัน...`);
-        const routeData = await GetRouteFromAPI(id, days);
+        pushBot(
+          `กำลังสร้างแผนทริปสำหรับ "${keyword}" ${days} วัน${
+            budget ? ` ภายใต้งบ ~${budget.toLocaleString()} บาท` : ""
+          }...`
+        );
+
+        const routeData = await GetRouteFromAPI(id, days, budget);
+
+        const budgetText = budget
+          ? `\n- งบประมาณรวมสำหรับทั้งทริปไม่เกิน ~${budget.toLocaleString()} บาท (พยายามเลือกกิจกรรม/ร้านอาหารให้เหมาะกับงบ)\n`
+          : "";
+
         const prompt = `
 คุณคือผู้ช่วยวางแผนทริปท่องเที่ยวมืออาชีพ โปรดจัดแผนการเดินทางในกรุงเทพฯ เป็นเวลา ${days} วัน โดยเริ่มจาก "${routeData.start_name}"
 
@@ -318,11 +383,10 @@ ${JSON.stringify(routeData.paths, null, 2)}
 ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
 
 กรุณาจัดแผนทริปให้ครบทั้ง ${days} วัน โดยมีรายละเอียดดังนี้:
-
 - แบ่งแผนตามวัน เช่น “วันที่ 1”, “วันที่ 2” พร้อมระบุช่วงเวลา (เช่น 09:00–10:30) ให้เหมาะสมกับจำนวนกิจกรรมในแต่ละวัน
 - ใช้ช่วงเวลาแต่ละกิจกรรมประมาณ 1.5–3 ชั่วโมง และจัดตามลำดับใน paths และ trip_plan
 - เริ่มกิจกรรมแต่ละวันเวลาประมาณ 08:00
-- ห้ามใช้คำว่า “เป็นต้นไป” ให้ระบุช่วงเวลาอย่างชัดเจนเท่านั้น เช่น 18:00–20.00
+- ห้ามใช้คำว่า “เป็นต้นไป” ให้ระบุช่วงเวลาอย่างชัดเจนเท่านั้น เช่น 18:00–20:00
 - วันแรกให้เริ่มต้นด้วยกิจกรรม “เช็คอินที่ <ชื่อที่พัก>” เวลา 08:00–09:00
 - สิ้นสุดทุกวันด้วย “พักผ่อนที่ <ชื่อที่พัก>” ช่วงเย็น
 - วันสุดท้ายให้ปิดท้ายด้วย “เช็คเอาท์และเดินทางกลับ” หลังจบกิจกรรมสุดท้าย และต้องมีเวลา เริ่มต้น - จบ เสมอ เช่น 19:00-20:00
@@ -330,9 +394,10 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
 - เขียนคำอธิบายกิจกรรมตามประเภท:
   - P = สถานที่ท่องเที่ยว เช่น "เที่ยวชม...", "เดินเล่นที่...", "ถ่ายรูปที่..."
   - R = ร้านอาหาร เช่น "รับประทานอาหารกลางวันที่...", "แวะชิมของว่างที่..."
-  - A = ที่พัก เช่น "เช็คอินที่...",หลังวันแรก "พักผ่อนที่...", "เช็คเอาท์และเดินทางกลับ"
+  - A = ที่พัก เช่น "เช็คอินที่...", หลังวันแรก "พักผ่อนที่...", "เช็คเอาท์และเดินทางกลับ"
 - หากมีสถานที่ซ้ำในหลายวัน ให้ปรับคำอธิบายกิจกรรมให้หลากหลาย ไม่ซ้ำซาก
 - ใช้ภาษาสุภาพ กระชับ อ่านง่าย และจัดรูปแบบให้อ่านสบาย มีการเว้นบรรทัดอย่างเหมาะสม
+${budgetText}
 `;
 
         const groqRes = await PostGroq(prompt);
@@ -357,6 +422,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
             JSON.stringify({
               keyword,
               days,
+              budget: budget ?? null,
               placeId: id,
               placeName: selectedPlace?.Name ?? keyword,
               time: new Date().toISOString(),
@@ -371,7 +437,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         const conditionPayload = {
           User_id: userIdNum as number,
           Day: days.toString(),
-          Price: 5000,
+          Price: budget ?? 5000,
           Accommodation: "โรงแรม",
           Landmark: keyword,
           Style: "ชิวๆ",
@@ -509,10 +575,17 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       }
       setSelectedPlaceDays(days);
 
+      // ถ้ายังไม่มีงบ → ถามก่อน
+      if (selectedBudget == null) {
+        setAwaitingBudget(true);
+        pushBotBudgetPrompt();
+        return;
+      }
+
       // บันทึกเงื่อนไขก่อน (guest → ไม่เรียก API)
       const tripDetails = {
         day: days.toString(),
-        price: 5000,
+        price: selectedBudget ?? 5000,
         accommodation: "โรงแรม",
         landmark: selectedPlace.Name || "",
         style: "ชิวๆ",
@@ -520,7 +593,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       await saveTripCondition(userIdNum, tripDetails);
 
       // สร้างเส้นทางและแผนทริป
-      await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, days);
+      await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, days, selectedBudget ?? undefined);
 
       // เคลียร์สถานะ
       setAwaitingDays(false);
@@ -528,7 +601,38 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       setSelectedPlace(null);
       setSelectedPlaceDays(null);
     },
-    [selectedPlace, userIdNum, generateRouteAndPlan]
+    [selectedPlace, userIdNum, generateRouteAndPlan, selectedBudget]
+  );
+
+  // เมื่อคลิกงบจาก quick-pick หรือ parse ได้
+  const handlePickBudget = useCallback(
+    async (budget: number) => {
+      setSelectedBudget(budget);
+      setAwaitingBudget(false);
+
+      // ถ้ามีทั้ง place + days พร้อมแล้ว → ไปต่อ
+      if (selectedPlace && selectedPlaceDays && selectedPlaceDays > 0) {
+        const tripDetails = {
+          day: selectedPlaceDays.toString(),
+          price: budget,
+          accommodation: "โรงแรม",
+          landmark: selectedPlace.Name || "",
+          style: "ชิวๆ",
+        };
+        await saveTripCondition(userIdNum, tripDetails);
+        await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, selectedPlaceDays, budget);
+
+        setAwaitingConfirm(false);
+        setSelectedPlace(null);
+        setSelectedPlaceDays(null);
+        setAwaitingDays(false);
+        return;
+      }
+
+      // ยังไม่ครบพารามิเตอร์ → แค่ยืนยันรับทราบงบ
+      pushBot(`รับทราบงบประมาณ ~ ${budget.toLocaleString()} บาท ค่ะ`);
+    },
+    [selectedPlace, selectedPlaceDays, userIdNum, generateRouteAndPlan]
   );
 
   // ===== เลือกสถานที่ด้วยการ "คลิกการ์ด" =====
@@ -538,17 +642,25 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         setSelectedPlace(place);
         setAwaitingUserSelection(false);
 
-        // ถ้ารู้จำนวนวันแล้ว → บันทึกเงื่อนไข + สร้างแผน
         if (selectedPlaceDays !== null && selectedPlaceDays > 0) {
+          // ถ้ายังไม่มีงบ → ถามก่อน
+          if (selectedBudget == null) {
+            setAwaitingBudget(true);
+            pushBotBudgetPrompt();
+            setAwaitingConfirm(false);
+            setAwaitingDays(false);
+            return;
+          }
+
           const tripDetails = {
             day: selectedPlaceDays.toString(),
-            price: 5000,
+            price: selectedBudget ?? 5000,
             accommodation: "โรงแรม",
             landmark: place.Name || "",
             style: "ชิวๆ",
           };
           await saveTripCondition(userIdNum, tripDetails);
-          await generateRouteAndPlan(place.ID!, place.Name!, selectedPlaceDays);
+          await generateRouteAndPlan(place.ID!, place.Name!, selectedPlaceDays, selectedBudget ?? undefined);
 
           setAwaitingConfirm(false);
           setSelectedPlace(null);
@@ -566,7 +678,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         pushBot("เกิดข้อผิดพลาด กรุณาลองเลือกสถานที่อีกครั้งค่ะ");
       }
     },
-    [generateRouteAndPlan, selectedPlaceDays, userIdNum]
+    [generateRouteAndPlan, selectedPlaceDays, userIdNum, selectedBudget]
   );
 
   const handleUserMessage = useCallback(
@@ -574,22 +686,55 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
       pushUser(userText);
       const msg = userText.trim();
 
-      // 1) รอเลือกสถานที่จาก list
+      // 1) กรอกงบประมาณ
+      if (awaitingBudget) {
+        const parseBudgetInline = (s: string): number | null => {
+          const km = s.match(/(\d+(?:[.,]\d+)?)\s*[kK]\b/);
+          if (km) return Math.round(parseFloat(km[1].replace(",", "")) * 1000);
+          const th = s.match(/(\d+)\s*(พัน|หมื่น)/);
+          if (th) {
+            const base = parseInt(th[1], 10);
+            const mul = th[2] === "หมื่น" ? 10000 : 1000;
+            return base * mul;
+          }
+          const n1 = s.match(/(\d[\d,\.]*)/);
+          if (n1) return Math.round(parseFloat(n1[1].replace(/[,]/g, "")));
+          return null;
+        };
+
+        const b = parseBudgetInline(msg);
+        if (b && b > 0) {
+          await handlePickBudget(b);
+        } else {
+          pushBot("กรุณาพิมพ์งบประมาณเป็นตัวเลข เช่น 5000 หรือ 5,000 หรือ 5k ค่ะ");
+        }
+        return;
+      }
+
+      // 2) รอเลือกสถานที่จาก list
       if (awaitingUserSelection) {
         const byName = suggestedPlaces.find((p) => p.Name === msg);
         if (byName) {
           setSelectedPlace(byName);
           setAwaitingUserSelection(false);
           if (selectedPlaceDays !== null && selectedPlaceDays > 0) {
+            if (selectedBudget == null) {
+              setAwaitingBudget(true);
+              pushBotBudgetPrompt();
+              setAwaitingConfirm(false);
+              setAwaitingDays(false);
+              return;
+            }
+
             const tripDetails = {
               day: selectedPlaceDays.toString(),
-              price: 5000,
+              price: selectedBudget ?? 5000,
               accommodation: "โรงแรม",
               landmark: byName?.Name || "",
               style: "ชิวๆ",
             };
             await saveTripCondition(userIdNum, tripDetails);
-            await generateRouteAndPlan(byName.ID!, byName.Name!, selectedPlaceDays);
+            await generateRouteAndPlan(byName.ID!, byName.Name!, selectedPlaceDays, selectedBudget ?? undefined);
 
             setAwaitingConfirm(false);
             setSelectedPlace(null);
@@ -606,15 +751,23 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
             setSelectedPlace(place);
             setAwaitingUserSelection(false);
             if (selectedPlaceDays !== null && selectedPlaceDays > 0) {
+              if (selectedBudget == null) {
+                setAwaitingBudget(true);
+                pushBotBudgetPrompt();
+                setAwaitingConfirm(false);
+                setAwaitingDays(false);
+                return;
+              }
+
               const tripDetails = {
                 day: selectedPlaceDays.toString(),
-                price: 5000,
+                price: selectedBudget ?? 5000,
                 accommodation: "โรงแรม",
                 landmark: place?.Name || "",
                 style: "ชิวๆ",
               };
-                await saveTripCondition(userIdNum, tripDetails);
-                await generateRouteAndPlan(place.ID!, place.Name!, selectedPlaceDays);
+              await saveTripCondition(userIdNum, tripDetails);
+              await generateRouteAndPlan(place.ID!, place.Name!, selectedPlaceDays, selectedBudget ?? undefined);
 
               setAwaitingConfirm(false);
               setSelectedPlace(null);
@@ -631,20 +784,33 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         return;
       }
 
-      // 2) รอยืนยันเลือกสถานที่ (คง flow เดิม ถ้าเคยใช้)
+      // 3) รอยืนยันเลือกสถานที่ (คง flow เดิม ถ้าเคยใช้)
       if (awaitingConfirm) {
         const norm = msg.toLowerCase();
         if (norm.startsWith("ใช่")) {
           if (selectedPlace && selectedPlaceDays !== null) {
+            if (selectedBudget == null) {
+              setAwaitingBudget(true);
+              pushBotBudgetPrompt();
+              setAwaitingConfirm(false);
+              setAwaitingDays(false);
+              return;
+            }
+
             const tripDetails = {
               day: selectedPlaceDays.toString(),
-              price: 5000,
+              price: selectedBudget ?? 5000,
               accommodation: "โรงแรม",
               landmark: selectedPlace?.Name || "",
               style: "ชิวๆ",
             };
             await saveTripCondition(userIdNum, tripDetails);
-            await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, selectedPlaceDays);
+            await generateRouteAndPlan(
+              selectedPlace.ID!,
+              selectedPlace.Name!,
+              selectedPlaceDays,
+              selectedBudget ?? undefined
+            );
 
             setAwaitingConfirm(false);
             setSelectedPlace(null);
@@ -666,7 +832,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         return;
       }
 
-      // 3) รอจำนวนวัน (กรณีพิมพ์ตัวเลขแทนกดการ์ด)
+      // 4) รอจำนวนวัน (กรณีพิมพ์ตัวเลขแทนกดการ์ด)
       if (awaitingDays) {
         const daysOnly = msg.replace(/[^\d]/g, "");
         const daysNum = parseInt(daysOnly, 10);
@@ -674,15 +840,26 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         if (!isNaN(daysNum) && daysNum > 0) {
           setSelectedPlaceDays(daysNum);
           if (selectedPlace) {
+            if (selectedBudget == null) {
+              setAwaitingBudget(true);
+              pushBotBudgetPrompt();
+              return;
+            }
+
             const tripDetails = {
               day: daysNum.toString(),
-              price: 5000,
+              price: selectedBudget ?? 5000,
               accommodation: "โรงแรม",
               landmark: selectedPlace.Name || "",
               style: "ชิวๆ",
             };
             await saveTripCondition(userIdNum, tripDetails);
-            await generateRouteAndPlan(selectedPlace.ID!, selectedPlace.Name!, daysNum);
+            await generateRouteAndPlan(
+              selectedPlace.ID!,
+              selectedPlace.Name!,
+              daysNum,
+              selectedBudget ?? undefined
+            );
 
             setAwaitingDays(false);
             setAwaitingConfirm(false);
@@ -697,7 +874,7 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         return;
       }
 
-      // 4) วิเคราะห์ข้อความปกติ → เรียก LLM เพื่อแนะนำสถานที่ในระบบ
+      // 5) วิเคราะห์ข้อความปกติ → เรียก LLM เพื่อแนะนำสถานที่ในระบบ
       const analysis = extractKeywordAndDays(msg);
       if (analysis?.keyword) {
         setAwaitingDays(false);
@@ -705,6 +882,13 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
         setAwaitingUserSelection(false);
         setSelectedPlace(null);
         setSelectedPlaceDays(null);
+
+        // ตั้งงบจากข้อความ (ถ้ามี)
+        if (analysis.budget != null) {
+          setSelectedBudget(analysis.budget);
+        } else {
+          setSelectedBudget(null);
+        }
 
         try {
           setLoading(true);
@@ -741,6 +925,7 @@ ${landmarkNames}
             } else {
               setSelectedPlaceDays(null);
             }
+            if (analysis.budget != null) setSelectedBudget(analysis.budget);
             return;
           }
 
@@ -750,18 +935,28 @@ ${landmarkNames}
             if (typeof analysis.days === "number" && analysis.days > 0) {
               setSelectedPlaceDays(analysis.days);
 
+              if (analysis.budget == null) {
+                // ต้องถามงบก่อน
+                setAwaitingDays(false);
+                setAwaitingBudget(true);
+                pushBotBudgetPrompt();
+                return;
+              }
+
               const tripDetails = {
                 day: analysis.days.toString(),
-                price: 5000,
+                price: analysis.budget!,
                 accommodation: "โรงแรม",
                 landmark: matched.Name || "",
                 style: "ชิวๆ",
               };
               await saveTripCondition(userIdNum, tripDetails);
-              await generateRouteAndPlan(matched.ID!, analysis.keyword, analysis.days);
+              await generateRouteAndPlan(matched.ID!, analysis.keyword, analysis.days, analysis.budget!);
             } else {
+              // ยังไม่รู้จำนวนวัน → ไปถามวัน
               setAwaitingDays(true);
               pushBotDaysPrompt(matched.Name ?? "", getPlaceImage(matched));
+              if (analysis.budget != null) setSelectedBudget(analysis.budget); // เก็บงบไว้ก่อน
             }
             return;
           }
@@ -776,8 +971,8 @@ ${landmarkNames}
         return;
       }
 
-      // 5) อื่นๆ
-      pushBot('ขอบคุณสำหรับข้อความค่ะ หากต้องการวางแผนทริป พิมพ์ว่า "ฉันอยากไป..." พร้อมจำนวนวัน');
+      // 6) อื่นๆ
+      pushBot('ขอบคุณสำหรับข้อความค่ะ หากต้องการวางแผนทริป พิมพ์ว่า "ฉันอยากไป..." พร้อมจำนวนวัน และงบประมาณ (ถ้ามี)');
     },
     [
       awaitingUserSelection,
@@ -789,6 +984,9 @@ ${landmarkNames}
       landmarks,
       generateRouteAndPlan,
       userIdNum,
+      awaitingBudget,
+      handlePickBudget,
+      selectedBudget,
     ]
   );
 
@@ -903,7 +1101,7 @@ ${landmarkNames}
         {messages.map((m) => {
           const isUser = m.role === "user";
 
-          // ===== renderer ใหม่สำหรับ days-prompt (รูป+ข้อความถามจำนวนวัน) =====
+          // ===== renderer: days-prompt (รูป+ข้อความถามจำนวนวัน) =====
           if (m.role === "ai" && (m as any).kind === "days-prompt") {
             const dp = m as Extract<Msg, { kind: "days-prompt" }>;
             return (
@@ -913,7 +1111,7 @@ ${landmarkNames}
                     className="trip-chat-avatar"
                     style={{
                       backgroundImage:
-                        'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIjnYTrzokvvU5de3TEWGfw-agnUCZ2-VIE54Pb0F4q-QwJA5mEvlXu2ErhvgtLN9t4Un4HopdtVlw_TWXw0tdOOiqJ6uqBstG3CvtddEwjWLkxiMCwl8jo6872bXiBeMf1kZZYRC4uS-ZSUCFz65eRaCMtiZ-zPN891z-ggZxtauPNeo2938BZmwJnYZ-Jgc-9HI5SJeQeR3rrAPE713E61VFK8y0sFN038hCtInQYQt1GmEYxyDaR8YmSlUlIOsp9lP9-FYZODE")',
+                        'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIjnYTrzokvvU5de3TEWGfw-agnUCZ2-VIE54Pb0F4q-QwJA5mEvlXu2ErhvgtLN9t4Un4HopdtVlw_TWXw0tdOOiqJ6uqBstG3CvtddEwjWLkxiMCwl8jo6872bXiBeMf1kZZYRC4uS-ZSUCFз...")',
                     }}
                   />
                 )}
@@ -962,7 +1160,7 @@ ${landmarkNames}
             );
           }
 
-          // ===== renderer สำหรับการ์ด Quickpick จำนวนวัน =====
+          // ===== renderer: days-quickpick =====
           if (m.role === "ai" && (m as any).kind === "days-quickpick") {
             const dqp = m as Extract<Msg, { kind: "days-quickpick" }>;
             return (
@@ -1016,6 +1214,88 @@ ${landmarkNames}
                       </div>
                       <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280" }}>
                         หรือพิมพ์จำนวนวันเป็นตัวเลข
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ===== renderer: budget-prompt =====
+          if (m.role === "ai" && (m as any).kind === "budget-prompt") {
+            const bp = m as Extract<Msg, { kind: "budget-prompt" }>;
+            return (
+              <div key={m.id} className="trip-chat-row">
+                <div
+                  className="trip-chat-avatar"
+                  style={{
+                    backgroundImage:
+                      'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIjnYTrzokvvU5de3TEWGfw-agnUCZ2-VIE54Pb0F4q-QwJA5mEvlXu2ErhvgtLN9t4Un4HopdtVlw_TWXw0tdOOiqJ6uqBstG3CvtddEwjWLkxiMCwl8jo6872bXiBeMf1kZZYRC4uS-ZSUCFz65eRaCMtiZ-zPN891z-ggZxtauPNeo2938BZmwJnYZ-Jgc-9HI5SJeQeR3rrAPE713E61VFK8y0sFN038hCtInQYQt1GmEYxyDaR8YmSlUlIOsp9lP9-FYZODE")',
+                  }}
+                />
+                <div className="trip-chat-bubble-group left">
+                  <p className="trip-chat-author">AI Assistant</p>
+                  <div className="trip-chat-bubble ai">{bp.text}</div>
+                </div>
+              </div>
+            );
+          }
+
+          // ===== renderer: budget-quickpick =====
+          if (m.role === "ai" && (m as any).kind === "budget-quickpick") {
+            const bqp = m as Extract<Msg, { kind: "budget-quickpick" }>;
+            return (
+              <div key={m.id} className="trip-chat-row">
+                <div
+                  className="trip-chat-avatar"
+                  style={{
+                    backgroundImage:
+                      'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIjnYTrzokvvU5de3TEWGfw-agnUCZ2-VIE54Pb0F4q-QwJA5mEvlXu2ErhvgtLN9t4Un4HopdtVlw_TWXw0tdOOiqJ6uqBstG3CvtddEwjWLkxiMCwl8jo6872bXiBeMf1kZZYRC4uS-ZSUCFz65eRaCMtiZ-zPN891z-ggZxtauPNeo2938BZmwJnYZ-Jgc-9HI5SJeQeR3rrAPE713E61VFK8y0sFN038hCtInQYQt1GmEYxyDaR8YmSlUlIOsp9lP9-FYZODE")',
+                  }}
+                />
+                <div className="trip-chat-bubble-group left">
+                  <p className="trip-chat-author">AI Assistant</p>
+                  <div className="trip-chat-bubble ai">
+                    <div
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 10,
+                        padding: 12,
+                        background: "#fff",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 8, textAlign: "center" }}>
+                        เลือกงบประมาณรวมของทริป
+                      </div>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(4, minmax(80px, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        {bqp.choices.map((b) => (
+                          <button
+                            key={b}
+                            type="button"
+                            onClick={() => handlePickBudget(b)}
+                            style={{
+                              padding: "10px 0",
+                              border: "1px solid #d1d5db",
+                              borderRadius: 8,
+                              background: "#fff",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                            }}
+                            title={`${b.toLocaleString()} บาท`}
+                          >
+                            {b.toLocaleString()} บ.
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280" }}>
+                        หรือพิมพ์จำนวนเงินเป็นตัวเลข (เช่น 5000 หรือ 5k)
                       </div>
                     </div>
                   </div>
@@ -1115,11 +1395,7 @@ ${landmarkNames}
             justifyContent: "center",
           }}
         >
-          <Avatar
-            size={40}
-            icon={<UserOutlined />}
-            style={{ backgroundColor: "#fde3cf", color: "#f56a00" }}
-          />
+          <Avatar size={40} icon={<UserOutlined />} style={{ backgroundColor: "#fde3cf", color: "#f56a00" }} />
         </div>
         <div className="trip-chat-inputwrap">
           <input
@@ -1141,14 +1417,7 @@ ${landmarkNames}
             title="Send"
             disabled={loading}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              fill="currentColor"
-              viewBox="0 0 256 256"
-              aria-hidden="true"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true">
               <path d="M239.16,25.34a8,8,0,0,0-8.5-1.74l-208,80a8,8,0,0,0,0,14.8l88,32,32,88a8,8,0,0,0,14.8,0l80-208A8,8,0,0,0,239.16,25.34ZM164.69,164.69,144,216l-28.69-79.31,49.38-49.38-81.14,29.15L40,80,216,40Z" />
             </svg>
           </button>

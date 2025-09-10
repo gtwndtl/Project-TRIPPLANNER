@@ -3,12 +3,14 @@ package Restaurant
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/gtwndtl/trip-spark-builder/entity" 
+	"github.com/gtwndtl/trip-spark-builder/entity"
 )
 
 type RestaurantController struct {
@@ -18,11 +20,54 @@ type RestaurantController struct {
 
 func NewRestaurantController(db *gorm.DB, gisDB *gorm.DB) *RestaurantController {
 	return &RestaurantController{
-		MysqlDB:    db,
+		MysqlDB:  db,
 		PostgisDB: gisDB,
 	}
 }
 
+// ------------------------ helpers ------------------------
+
+var reDigits = regexp.MustCompile(`\d[\d,]*`)
+
+func parsePriceRange(s string) (int, int) {
+	if s == "" { return 0, 0 }
+	t := strings.ToLower(strings.TrimSpace(s))
+	t = strings.NewReplacer("–", "-", "—", "-", "−", "-").Replace(t)
+
+	nums := reDigits.FindAllString(t, -1)
+	toInt := func(x string) int {
+		x = strings.ReplaceAll(x, ",", "")
+		n, _ := strconv.Atoi(x)
+		return n
+	}
+	hasFree := strings.Contains(t, "ฟรี") || strings.Contains(t, "free")
+
+	if len(nums) == 0 {
+		if hasFree { return 0, 0 }
+		return 0, 0
+	}
+
+	minV := int(^uint(0) >> 1)
+	maxV := 0
+	for _, ns := range nums {
+		v := toInt(ns)
+		if v < minV { minV = v }
+		if v > maxV { maxV = v }
+	}
+	if minV == int(^uint(0)>>1) { minV = 0 }
+
+	if hasFree {
+		if maxV == 0 { return 0, 0 }
+		return 0, maxV
+	}
+	if len(nums) == 1 {
+		return maxV, maxV
+	}
+	if minV > maxV { minV, maxV = maxV, minV }
+	return minV, maxV
+}
+
+// ------------------------ handlers ------------------------
 
 // Create Restaurant + GIS
 func (ctl *RestaurantController) Create(c *gin.Context) {
@@ -40,15 +85,16 @@ func (ctl *RestaurantController) Create(c *gin.Context) {
 		ThumbnailURL string    `json:"thumbnail_url"`
 		TimeOpen     time.Time `json:"time_open"`
 		TimeClose    time.Time `json:"time_close"`
-		TotalPeople  int       `json:"total_people"`
-		Price        float32   `json:"price"`
+		TotalPeople  string    `json:"total_people"`
+		Price        string    `json:"price"`
 		Review       int       `json:"review"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	pmin, pmax := parsePriceRange(input.Price)
 
 	res := entity.Restaurant{
 		PlaceID:      input.PlaceID,
@@ -67,6 +113,8 @@ func (ctl *RestaurantController) Create(c *gin.Context) {
 		Total_people: input.TotalPeople,
 		Price:        input.Price,
 		Review:       input.Review,
+		PriceMin:     pmin,
+		PriceMax:     pmax,
 	}
 
 	if err := ctl.MysqlDB.Create(&res).Error; err != nil {
@@ -99,7 +147,7 @@ func (ctl *RestaurantController) GetAll(c *gin.Context) {
 		Location string `json:"location"`
 	}
 
-	var results []ResWithLocation
+	results := make([]ResWithLocation, 0, len(ress))
 	for _, res := range ress {
 		var location string
 		err := ctl.PostgisDB.Raw(
@@ -137,10 +185,7 @@ func (ctl *RestaurantController) GetByID(c *gin.Context) {
 		location = ""
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"restaurant": res,
-		"location":   location,
-	})
+	c.JSON(http.StatusOK, gin.H{"restaurant": res, "location": location})
 }
 
 // Update restaurant + GIS
@@ -166,11 +211,10 @@ func (ctl *RestaurantController) Update(c *gin.Context) {
 		ThumbnailURL string    `json:"thumbnail_url"`
 		TimeOpen     time.Time `json:"time_open"`
 		TimeClose    time.Time `json:"time_close"`
-		TotalPeople  int       `json:"total_people"`
-		Price        float32   `json:"price"`
+		TotalPeople  string    `json:"total_people"`
+		Price        string    `json:"price"`
 		Review       int       `json:"review"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -181,6 +225,8 @@ func (ctl *RestaurantController) Update(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Restaurant not found"})
 		return
 	}
+
+	pmin, pmax := parsePriceRange(input.Price)
 
 	res.PlaceID = input.PlaceID
 	res.Name = input.Name
@@ -198,6 +244,8 @@ func (ctl *RestaurantController) Update(c *gin.Context) {
 	res.Total_people = input.TotalPeople
 	res.Price = input.Price
 	res.Review = input.Review
+	res.PriceMin = pmin
+	res.PriceMax = pmax
 
 	if err := ctl.MysqlDB.Save(&res).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update restaurant"})

@@ -499,17 +499,36 @@ async function ChangePassword(data: ChangePasswordInput): Promise<{ message: str
     }
 }
 
+
 // Async function สำหรับเรียกเส้นทางทริป
-async function GetRouteFromAPI(startId: number, days: number) {
-    try {
-        const response = await axios.get(
-            `http://localhost:8080/gen-route?start=P${startId}&days=${days}`
-        );
-        return response.data; // ส่งคืนข้อมูลที่ frontend ต้องใช้
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดขณะเรียก API เส้นทาง:', error);
-        throw error; // ส่ง error กลับไปให้ component ไปจัดการ
-    }
+ async function GetRouteFromAPI(id: number, days: number, budget?: number) {
+  const q = new URLSearchParams({ start: `P${id}`, days: String(days) });
+  if (budget != null) q.set("budget", String(budget));
+
+  const url = `${apiUrl}/gen-route?${q.toString()}`;
+  const res = await fetch(url, {
+    // ถ้า backend ใช้ cookie/session ให้เปิด
+    // credentials: "include",
+  });
+
+  const bodyText = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`GetRouteFromAPI ${res.status} ${res.statusText}: ${bodyText.slice(0, 200)}`);
+  }
+
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    throw new Error(
+      `GetRouteFromAPI expected JSON, got ${ct}. Body: ${bodyText.slice(0, 200)}`
+    );
+  }
+
+  try {
+    return JSON.parse(bodyText);
+  } catch (e) {
+    throw new Error(`GetRouteFromAPI: cannot parse JSON. Body: ${bodyText.slice(0, 200)}`);
+  }
 }
 
 async function PostGroq(prompt: string): Promise<GroqResponse> {

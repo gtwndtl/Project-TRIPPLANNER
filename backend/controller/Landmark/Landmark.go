@@ -3,12 +3,14 @@ package Landmark
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/gtwndtl/trip-spark-builder/entity" 
+	"github.com/gtwndtl/trip-spark-builder/entity"
 )
 
 type LandmarkController struct {
@@ -18,55 +20,101 @@ type LandmarkController struct {
 
 func NewLandmarkController(db *gorm.DB, gisDB *gorm.DB) *LandmarkController {
 	return &LandmarkController{
-		MysqlDB:    db,
+		MysqlDB:  db,
 		PostgisDB: gisDB,
 	}
 }
 
+// ------------------------ helpers ------------------------
+
+var reDigits = regexp.MustCompile(`\d[\d,]*`)
+
+func parsePriceRange(s string) (int, int) {
+	if s == "" { return 0, 0 }
+	t := strings.ToLower(strings.TrimSpace(s))
+	t = strings.NewReplacer("–", "-", "—", "-", "−", "-").Replace(t)
+
+	nums := reDigits.FindAllString(t, -1)
+	toInt := func(x string) int {
+		x = strings.ReplaceAll(x, ",", "")
+		n, _ := strconv.Atoi(x)
+		return n
+	}
+	hasFree := strings.Contains(t, "ฟรี") || strings.Contains(t, "free")
+
+	if len(nums) == 0 {
+		if hasFree { return 0, 0 }
+		return 0, 0
+	}
+
+	minV := int(^uint(0) >> 1)
+	maxV := 0
+	for _, ns := range nums {
+		v := toInt(ns)
+		if v < minV { minV = v }
+		if v > maxV { maxV = v }
+	}
+	if minV == int(^uint(0)>>1) { minV = 0 }
+
+	if hasFree {
+		if maxV == 0 { return 0, 0 }
+		return 0, maxV
+	}
+	if len(nums) == 1 {
+		return maxV, maxV
+	}
+	if minV > maxV { minV, maxV = maxV, minV }
+	return minV, maxV
+}
+
+// ------------------------ handlers ------------------------
 
 // Create Landmark + LandmarkGis
 func (ctl *LandmarkController) Create(c *gin.Context) {
 	var input struct {
-		PlaceID     int       `json:"place_id"`
-		Name        string    `json:"name"`
-		Category    string    `json:"category"`
-		Lat         float64   `json:"lat"`
-		Lon         float64   `json:"lon"`
-		Address     string    `json:"address"`
-		Province    string    `json:"province"`
-		District    string    `json:"district"`
-		SubDistrict string    `json:"sub_district"`
-		Postcode    string    `json:"postcode"`
-		ThumbnailURL string   `json:"thumbnail_url"`
-		TimeOpen    time.Time `json:"time_open"`
-		TimeClose   time.Time `json:"time_close"`
-		TotalPeople int       `json:"total_people"`
-		Price       float32   `json:"price"`
-		Review      int       `json:"review"`
+		PlaceID      int       `json:"place_id"`
+		Name         string    `json:"name"`
+		Category     string    `json:"category"`
+		Lat          float64   `json:"lat"`
+		Lon          float64   `json:"lon"`
+		Address      string    `json:"address"`
+		Province     string    `json:"province"`
+		District     string    `json:"district"`
+		SubDistrict  string    `json:"sub_district"`
+		Postcode     string    `json:"postcode"`
+		ThumbnailURL string    `json:"thumbnail_url"`
+		TimeOpen     time.Time `json:"time_open"`
+		TimeClose    time.Time `json:"time_close"`
+		TotalPeople  string    `json:"total_people"`
+		Price        string    `json:"price"`
+		Review       int       `json:"review"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	pmin, pmax := parsePriceRange(input.Price)
+
 	landmark := entity.Landmark{
-		PlaceID:     input.PlaceID,
-		Name:        input.Name,
-		Category:    input.Category,
-		Lat:         float32(input.Lat),
-		Lon:         float32(input.Lon),
-		Address:     input.Address,
-		Province:    input.Province,
-		District:    input.District,
-		SubDistrict: input.SubDistrict,
-		Postcode:    input.Postcode,
+		PlaceID:      input.PlaceID,
+		Name:         input.Name,
+		Category:     input.Category,
+		Lat:          float32(input.Lat),
+		Lon:          float32(input.Lon),
+		Address:      input.Address,
+		Province:     input.Province,
+		District:     input.District,
+		SubDistrict:  input.SubDistrict,
+		Postcode:     input.Postcode,
 		ThumbnailURL: input.ThumbnailURL,
-		Time_open:   input.TimeOpen,
-		Time_close:  input.TimeClose,
+		Time_open:    input.TimeOpen,
+		Time_close:   input.TimeClose,
 		Total_people: input.TotalPeople,
-		Price:       input.Price,
-		Review:      input.Review,
+		Price:        input.Price,
+		Review:       input.Review,
+		PriceMin:     pmin,
+		PriceMax:     pmax,
 	}
 
 	// Save to MySQL
@@ -80,7 +128,6 @@ func (ctl *LandmarkController) Create(c *gin.Context) {
 	if err := ctl.PostgisDB.Exec(
 		"INSERT INTO landmark_gis (landmark_id, location, created_at, updated_at) VALUES (?, ST_GeomFromText(?, 4326), NOW(), NOW())",
 		landmark.ID, wkt).Error; err != nil {
-		// rollback landmark if GIS insert fails
 		ctl.MysqlDB.Delete(&landmark)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create landmark GIS"})
 		return
@@ -102,7 +149,7 @@ func (ctl *LandmarkController) GetAll(c *gin.Context) {
 		Location string `json:"location"`
 	}
 
-	var results []LandmarkWithLocation
+	results := make([]LandmarkWithLocation, 0, len(landmarks))
 	for _, lm := range landmarks {
 		var location string
 		err := ctl.PostgisDB.Raw(
@@ -142,10 +189,7 @@ func (ctl *LandmarkController) GetByID(c *gin.Context) {
 		location = ""
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"landmark": landmark,
-		"location": location,
-	})
+	c.JSON(http.StatusOK, gin.H{"landmark": landmark, "location": location})
 }
 
 // Update landmark + GIS location
@@ -158,24 +202,23 @@ func (ctl *LandmarkController) Update(c *gin.Context) {
 	}
 
 	var input struct {
-		PlaceID     int       `json:"place_id"`
-		Name        string    `json:"name"`
-		Category    string    `json:"category"`
-		Lat         float64   `json:"lat"`
-		Lon         float64   `json:"lon"`
-		Address     string    `json:"address"`
-		Province    string    `json:"province"`
-		District    string    `json:"district"`
-		SubDistrict string    `json:"sub_district"`
-		Postcode    string    `json:"postcode"`
-		ThumbnailURL string   `json:"thumbnail_url"`
-		TimeOpen    time.Time `json:"time_open"`
-		TimeClose   time.Time `json:"time_close"`
-		TotalPeople int       `json:"total_people"`
-		Price       float32   `json:"price"`
-		Review      int       `json:"review"`
+		PlaceID      int       `json:"place_id"`
+		Name         string    `json:"name"`
+		Category     string    `json:"category"`
+		Lat          float64   `json:"lat"`
+		Lon          float64   `json:"lon"`
+		Address      string    `json:"address"`
+		Province     string    `json:"province"`
+		District     string    `json:"district"`
+		SubDistrict  string    `json:"sub_district"`
+		Postcode     string    `json:"postcode"`
+		ThumbnailURL string    `json:"thumbnail_url"`
+		TimeOpen     time.Time `json:"time_open"`
+		TimeClose    time.Time `json:"time_close"`
+		TotalPeople  string    `json:"total_people"`
+		Price        string    `json:"price"`
+		Review       int       `json:"review"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -187,7 +230,8 @@ func (ctl *LandmarkController) Update(c *gin.Context) {
 		return
 	}
 
-	// Update fields
+	pmin, pmax := parsePriceRange(input.Price)
+
 	landmark.PlaceID = input.PlaceID
 	landmark.Name = input.Name
 	landmark.Category = input.Category
@@ -204,13 +248,14 @@ func (ctl *LandmarkController) Update(c *gin.Context) {
 	landmark.Total_people = input.TotalPeople
 	landmark.Price = input.Price
 	landmark.Review = input.Review
+	landmark.PriceMin = pmin
+	landmark.PriceMax = pmax
 
 	if err := ctl.MysqlDB.Save(&landmark).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update landmark"})
 		return
 	}
 
-	// Update GIS location in PostGIS
 	wkt := fmt.Sprintf("POINT(%f %f)", input.Lon, input.Lat)
 	if err := ctl.PostgisDB.Exec(
 		"UPDATE landmark_gis SET location = ST_GeomFromText(?, 4326), updated_at = NOW() WHERE landmark_id = ?",
@@ -231,13 +276,11 @@ func (ctl *LandmarkController) Delete(c *gin.Context) {
 		return
 	}
 
-	// Delete GIS first
 	if err := ctl.PostgisDB.Exec("DELETE FROM landmark_gis WHERE landmark_id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete landmark GIS"})
 		return
 	}
 
-	// Delete landmark
 	if err := ctl.MysqlDB.Delete(&entity.Landmark{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete landmark"})
 		return

@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -80,11 +82,73 @@ func SetupDatabase() {
 		Lastname:  "Doe",
 		Age:       30,
 		Birthday:  time.Date(1993, 1, 1, 0, 0, 0, 0, time.UTC),
-		Type:	  "user", // กำหนดเป็น 'user' หรือ 'Google' ตามต้องการ
+		Type:      "user", // กำหนดเป็น 'user' หรือ 'Google' ตามต้องการ
 	}
 	dbSqlite.FirstOrCreate(&user, entity.User{Email: "a@gmail.com"})
 
 	fmt.Println("✅ All tables migrated successfully")
+}
+
+var reDigits = regexp.MustCompile(`\d[\d,]*`)
+
+func ParsePriceRange(s string) (int, int) {
+	if s == "" {
+		return 0, 0
+	}
+	t := strings.ToLower(strings.TrimSpace(s))
+
+	// ปรับรูปแบบขีดให้เป็น '-' เดียว (รองรับ – — −)
+	t = strings.NewReplacer("–", "-", "—", "-", "−", "-").Replace(t)
+
+	nums := reDigits.FindAllString(t, -1)
+	toInt := func(x string) int {
+		x = strings.ReplaceAll(x, ",", "")
+		n, _ := strconv.Atoi(x)
+		return n
+	}
+	hasFree := strings.Contains(t, "ฟรี") || strings.Contains(t, "free")
+
+	// ไม่มีตัวเลขเลย
+	if len(nums) == 0 {
+		if hasFree {
+			return 0, 0
+		}
+		return 0, 0
+	}
+
+	// หา min/max จากตัวเลขทั้งหมด
+	minV, maxV := int(^uint(0)>>1), 0 // minV = MaxInt, maxV = 0
+	for _, ns := range nums {
+		v := toInt(ns)
+		if v < minV {
+			minV = v
+		}
+		if v > maxV {
+			maxV = v
+		}
+	}
+	if minV == int(^uint(0)>>1) {
+		minV = 0
+	} // เผื่อกรณีไม่เจอเลขจริง ๆ (แทบไม่เกิด)
+
+	// ถ้ามีคำว่าฟรี → min = 0 (แต่คง max ตามที่เจอ)
+	if hasFree {
+		if maxV == 0 {
+			return 0, 0
+		}
+		return 0, maxV
+	}
+
+	// มีเลขเดียว
+	if len(nums) == 1 {
+		return maxV, maxV
+	}
+
+	// ปกติ: มีเลข >=2 ตัว → ช่วง min-max
+	if minV > maxV {
+		minV, maxV = maxV, minV
+	}
+	return minV, maxV
 }
 
 func LoadExcelData(db *gorm.DB) {
@@ -94,9 +158,12 @@ func LoadExcelData(db *gorm.DB) {
 	loadAccommodationGIS()
 	loadLandmarkGIS()
 	loadRestaurantGIS()
-	
+
 }
 
+// ------------------------------------------------------------
+// โหลดข้อมูล Accommodation
+// ------------------------------------------------------------
 func loadAccommodations(db *gorm.DB) {
 	f, err := excelize.OpenFile("config/places_data_3.xlsx")
 	if err != nil {
@@ -106,13 +173,20 @@ func loadAccommodations(db *gorm.DB) {
 	if err != nil {
 		panic(err)
 	}
+
 	for i, row := range rows {
-		if i == 0 || len(row) < 11 {
+		if i == 0 || len(row) < 19 { // ใช้ถึง index 18
 			continue
 		}
+
 		lat, _ := strconv.ParseFloat(row[3], 32)
 		lon, _ := strconv.ParseFloat(row[4], 32)
 		place, _ := strconv.Atoi(row[0])
+
+		priceRaw := row[17]       // ex. "1,000 - 1,400"
+		totalPeopleRaw := row[18] // เก็บดิบตามไฟล์
+		pmin, pmax := ParsePriceRange(priceRaw)
+
 		data := entity.Accommodation{
 			PlaceID:      place,
 			Name:         row[1],
@@ -126,14 +200,20 @@ func loadAccommodations(db *gorm.DB) {
 			ThumbnailURL: row[10],
 			Time_open:    time.Now(),
 			Time_close:   time.Now(),
-			Total_people: 0,
-			Price:        0.00,
+			Total_people: totalPeopleRaw,
+			Price:        priceRaw,
 			Review:       0,
+			PriceMin:     pmin,
+			PriceMax:     pmax,
 		}
 		db.Create(&data)
 	}
+	fmt.Println("Accommodation data loaded successfully ✅")
 }
 
+// ------------------------------------------------------------
+// โหลดข้อมูล Landmark
+// ------------------------------------------------------------
 func loadLandmarks(db *gorm.DB) {
 	f, err := excelize.OpenFile("config/Attraction_data_4.xlsx")
 	if err != nil {
@@ -143,13 +223,20 @@ func loadLandmarks(db *gorm.DB) {
 	if err != nil {
 		panic(err)
 	}
+
 	for i, row := range rows {
-		if i == 0 || len(row) < 11 {
+		if i == 0 || len(row) < 22 {
 			continue
 		}
+
 		lat, _ := strconv.ParseFloat(row[3], 32)
 		lon, _ := strconv.ParseFloat(row[4], 32)
 		place, _ := strconv.Atoi(row[0])
+
+		priceRaw := row[20] // เช่น "ฟรี", "~100 บาท (ต่างชาติ)"
+		totalPeopleRaw := row[21]
+		pmin, pmax := ParsePriceRange(priceRaw)
+
 		data := entity.Landmark{
 			PlaceID:      place,
 			Name:         row[1],
@@ -163,14 +250,20 @@ func loadLandmarks(db *gorm.DB) {
 			ThumbnailURL: row[10],
 			Time_open:    time.Now(),
 			Time_close:   time.Now(),
-			Total_people: 0,
-			Price:        0.00,
+			Total_people: totalPeopleRaw,
+			Price:        priceRaw,
 			Review:       0,
+			PriceMin:     pmin,
+			PriceMax:     pmax,
 		}
 		db.Create(&data)
 	}
+	fmt.Println("Landmark data loaded successfully ✅")
 }
 
+// ------------------------------------------------------------
+// โหลดข้อมูล Restaurant
+// ------------------------------------------------------------
 func loadRestaurants(db *gorm.DB) {
 	f, err := excelize.OpenFile("config/rharn.xlsx")
 	if err != nil {
@@ -180,13 +273,20 @@ func loadRestaurants(db *gorm.DB) {
 	if err != nil {
 		panic(err)
 	}
+
 	for i, row := range rows {
-		if i == 0 || len(row) < 11 {
+		if i == 0 || len(row) < 18 {
 			continue
 		}
+
 		lat, _ := strconv.ParseFloat(row[3], 32)
 		lon, _ := strconv.ParseFloat(row[4], 32)
 		place, _ := strconv.Atoi(row[0])
+
+		priceRaw := row[17] // "฿60-150/คน"
+		totalPeopleRaw := row[16]
+		pmin, pmax := ParsePriceRange(priceRaw)
+
 		data := entity.Restaurant{
 			PlaceID:      place,
 			Name:         row[1],
@@ -200,13 +300,17 @@ func loadRestaurants(db *gorm.DB) {
 			ThumbnailURL: row[10],
 			Time_open:    time.Now(),
 			Time_close:   time.Now(),
-			Total_people: 0,
-			Price:        0.00,
+			Total_people: totalPeopleRaw,
+			Price:        priceRaw,
 			Review:       0,
+			PriceMin:     pmin,
+			PriceMax:     pmax,
 		}
 		db.Create(&data)
 	}
+	fmt.Println("Restaurant data loaded successfully ✅")
 }
+
 // ฟังก์ชันช่วย: เช็คว่ามี table อยู่ใน Postgres ไหม
 func tableExists(tableName string) bool {
 	var exists bool

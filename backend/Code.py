@@ -29,24 +29,8 @@ def calculate_centroid(places):
 
 
 def find_nearest_accommodation(accommodations, centroid_lat, centroid_lon):
-    if centroid_lat is None or centroid_lon is None or not accommodations:
-        return None
-
-    def distance(lat1, lon1, lat2, lon2):
-        return ((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) ** 0.5
-
-    nearest = None
-    min_dist = float('inf')
-    for acc in accommodations:
-        lat = acc.get("lat") or acc.get("Lat")
-        lon = acc.get("lon") or acc.get("Lon")
-        if lat is None or lon is None:
-            continue
-        dist = distance(centroid_lat, centroid_lon, lat, lon)
-        if dist < min_dist:
-            min_dist = dist
-            nearest = acc
-    return nearest
+    # (ไม่ได้ใช้แล้ว; คงไว้เพื่อ compat)
+    return None
 
 
 def load_data(url, prefix):
@@ -251,12 +235,10 @@ def backfill_knn_edges(mst_adj, graph, min_degree=2, per_node=3, max_new_edges=5
     """
     new_edges = 0
 
-    # สร้างเซ็ตช่วยเช็คเร็ว
     def has_edge(u, v):
         return v in mst_adj.get(u, [])
 
     p_nodes = [n for n in mst_adj.keys() if n.startswith("P")]
-    # รวม P ที่ปรากฏใน graph แต่ยังไม่อยู่ใน mst_adj ให้ด้วย
     p_nodes = list(set(p_nodes) | {n for n in graph.keys() if n.startswith("P")})
 
     for u in p_nodes:
@@ -264,7 +246,6 @@ def backfill_knn_edges(mst_adj, graph, min_degree=2, per_node=3, max_new_edges=5
         if deg >= min_degree:
             continue
 
-        # candidate จากกราฟระยะ (เรียงตามใกล้สุด)
         neighbors = sorted(graph.get(u, []), key=lambda x: x[1])
         added_here = 0
         for v, _d in neighbors:
@@ -272,7 +253,6 @@ def backfill_knn_edges(mst_adj, graph, min_degree=2, per_node=3, max_new_edges=5
                 continue
             if u == v or has_edge(u, v):
                 continue
-            # เพิ่มเป็น undirected
             mst_adj[u].append(v)
             mst_adj[v].append(u)
             added_here += 1
@@ -285,29 +265,126 @@ def backfill_knn_edges(mst_adj, graph, min_degree=2, per_node=3, max_new_edges=5
 
 
 # ---------------------------
-# Trip planning
+# Budget helpers
+# ---------------------------
+
+def _get_num(v, *keys, default=0):
+    for k in keys:
+        if isinstance(v, dict) and k in v and v[k] is not None:
+            return v[k]
+    return default
+
+def price_min(item):
+    return _get_num(item, "price_min", "PriceMin", default=0)
+
+def price_max(item):
+    return _get_num(item, "price_max", "PriceMax", default=0)
+
+def split_daily_budget(total_budget, days):
+    if days <= 0: days = 1
+    per_day = total_budget // days
+    hotel = int(per_day * 0.55)      # ~55%
+    meal_each = int(per_day * 0.12)  # 2 มื้อ
+    attractions = per_day - hotel - (2 * meal_each)
+    if attractions < 0: attractions = 0
+    return {"per_day": per_day, "hotel": hotel, "meal_each": meal_each, "attractions": attractions}
+
+def relax(amount, pct=10):
+    return int(round(amount * (1.0 + pct/100.0)))
+
+
+# ---------------------------
+# Budget-aware selectors
+# ---------------------------
+
+def find_nearest_accommodation_under_budget(accommodations, centroid_lat, centroid_lon, hotel_budget):
+    if centroid_lat is None or centroid_lon is None or not accommodations:
+        return None
+
+    def distance(lat1, lon1, lat2, lon2):
+        return ((lat1 - lat2) ** 2 + (lon1 - lon2) ** 2) ** 0.5
+
+    pool = [a for a in accommodations if price_min(a) <= hotel_budget]
+    step = 0
+    while not pool and step < 5:  # ผ่อนงบทีละ 10% สูงสุด 50%
+        step += 1
+        hotel_budget = relax(hotel_budget, 10)
+        pool = [a for a in accommodations if price_min(a) <= hotel_budget]
+
+    if not pool:
+        return None
+
+    nearest, min_dist = None, float('inf')
+    for acc in pool:
+        lat = acc.get("lat") or acc.get("Lat")
+        lon = acc.get("lon") or acc.get("Lon")
+        if lat is None or lon is None:
+            continue
+        dist = distance(centroid_lat, centroid_lon, lat, lon)
+        if dist < min_dist:
+            min_dist, nearest = dist, acc
+    return nearest
+
+
+def pick_nearest_restaurant_under_budget(current_p, remaining_r_ids, restaurants, graph, meal_budget):
+    def edge_dist(frm, to):
+        return next((d for nxt, d in graph.get(frm, []) if nxt == to), float('inf'))
+
+    rmap = {r['id']: r for r in restaurants}
+    affordable = [rid for rid in remaining_r_ids if price_min(rmap[rid]) <= meal_budget]
+    candidates = affordable if affordable else list(remaining_r_ids)
+
+    if not candidates:
+        return None
+    return min(candidates, key=lambda rid: edge_dist(current_p, rid))
+
+
+# ---------------------------
+# Spend helpers
+# ---------------------------
+
+def compute_spend_for_day(day_nodes, place_lookup, hotel_price_per_day):
+    """คำนวณค่าใช้จ่ายจริงของวันจาก nodes ที่เลือกแล้ว"""
+    meals_sum = 0
+    attractions_sum = 0
+    for nid in day_nodes:
+        p = place_lookup.get(nid)
+        if not p:
+            continue
+        if nid.startswith("R"):
+            meals_sum += max(0, price_min(p))
+        elif nid.startswith("P"):
+            attractions_sum += max(0, price_min(p))
+    hotel = max(0, hotel_price_per_day)
+    total = hotel + meals_sum + attractions_sum
+    return {"hotel": hotel, "meals": meals_sum, "attractions": attractions_sum, "total": total}
+
+
+# ---------------------------
+# Trip planning (budget-aware)
 # ---------------------------
 
 def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
               days=1, distance=4000, k=20, k_mst=20, use_boykov=True,
-              mode="penalize", penalty=1.3):
+              mode="penalize", penalty=1.3, total_budget=0):
     """
-    - ถ้า use_boykov=True: เลือก zoneA/zoneB อัตโนมัติจากพิกัด (รอบ start)
-      แล้วเรียก /mst/byflow ให้ backend หาคอขวด+ปรับ cost ให้เลย
-    - ถ้า use_boykov=False: เรียก /mst/byflow โดยไม่ส่ง zone → MST ปกติ
-    - จากนั้น backfill MST ด้วย KNN edges (ควบคุมได้) เพื่อให้เส้นทางครอบคลุมขึ้น
-    - เดิน DFS วางรูปแบบ P P R P P R ต่อวัน
-    - เลือกที่พักจาก centroid
+    เพิ่มคุมงบต่อวัน + คำนวณค่าใช้จ่ายจริง:
+    - ที่พัก: เลือกที่ราคาไม่เกิน budget ต่อวัน
+    - ร้าน: เลือก 2 ร้าน/วัน ราคาไม่เกิน budget ต่อมื้อ (fallback เป็นใกล้สุด/ถูกสุด)
+    - แลนด์มาร์ก: ฟรีก่อน แล้วค่อยเสียเงิน แต่จำกัดรวมไม่เกิน budget attractions/วัน
     """
     all_places = landmarks + restaurants + accommodations
     place_lookup = {p['id']: p for p in all_places}
+
+    # แบ่งงบต่อวัน
+    budget = split_daily_budget(total_budget, days)
 
     # 1) โซน
     zoneA_csv, zoneB_csv = ("", "")
     if use_boykov:
         zoneA_csv, zoneB_csv = pick_zones_from_coords(landmarks, start_id, take_near=4, take_far=4)
 
-    # 2) เรียก /mst/byflow → MST
+    # 2) /mst/byflow → MST
     byflow = fetch_mst_from_api_byflow(
         start_id=start_id,
         distance=distance,
@@ -321,11 +398,7 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
     mst_rows = byflow.get("mst", [])
     mst_adj = build_mst_adj_from_api(mst_rows)
 
-    # 2.1 Fallback: ถ้า root ไม่มีเพื่อนเลย เติม seed
     ensure_seed_points(start_id, mst_adj, graph, need_p=4)
-
-    # 2.2 Backfill: เติม KNN edges ให้โหนดที่เพื่อนน้อย
-    # (ปรับค่านี้ได้ถ้าต้องการให้ทางเยอะขึ้น/น้อยลง)
     backfill_knn_edges(mst_adj, graph, min_degree=2, per_node=3, max_new_edges=800)
 
     # 3) เตรียม R
@@ -338,40 +411,71 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
     day_count = 0
     visited = set()
 
-    def insert_nearest_restaurant(current_p):
+    attractions_spent = 0  # งบค่าเข้า P ต่อวัน
+
+    def insert_restaurant_under_budget(current_p):
         nonlocal remaining_r
         if not remaining_r:
             return None
-        nearest_r = None
-        min_dist = float('inf')
-        for r in list(remaining_r):
-            dist = next((d for nxt, d in graph.get(current_p, []) if nxt == r), float('inf'))
-            if dist < min_dist:
-                min_dist = dist
-                nearest_r = r
-        if nearest_r:
-            remaining_r.remove(nearest_r)
-        return nearest_r
+        rid = pick_nearest_restaurant_under_budget(
+            current_p=current_p,
+            remaining_r_ids=remaining_r,
+            restaurants=restaurants,
+            graph=graph,
+            meal_budget=budget["meal_each"]
+        )
+        if rid:
+            remaining_r.remove(rid)
+        return rid
 
     def flush_day():
-        nonlocal current_day_plan, p_count, day_count
+        nonlocal current_day_plan, p_count, day_count, attractions_spent
         if current_day_plan:
             trip_plan_days.append(current_day_plan)
             current_day_plan = []
             p_count = 0
             day_count += 1
+            attractions_spent = 0
+
+    def can_take_landmark(node_id):
+        nonlocal attractions_spent
+        if not node_id.startswith("P"):
+            return True
+        p = place_lookup.get(node_id)
+        if not p: return True
+        fee = price_min(p)
+        if fee <= 0:
+            return True
+        return (attractions_spent + fee) <= budget["attractions"]
+
+    def after_take_landmark(node_id):
+        nonlocal attractions_spent
+        if node_id.startswith("P"):
+            p = place_lookup.get(node_id)
+            if p:
+                fee = price_min(p)
+                if fee > 0:
+                    attractions_spent += fee
 
     def dfs(node):
         nonlocal p_count, current_day_plan, day_count
         if day_count >= days:
             return
         visited.add(node)
+
+        if node.startswith("P") and not can_take_landmark(node):
+            for nxt in mst_adj.get(node, []):
+                if nxt not in visited and day_count < days:
+                    dfs(nxt)
+            return
+
         current_day_plan.append(node)
         if node.startswith("P"):
             p_count += 1
+            after_take_landmark(node)
 
         if p_count in (2, 4):
-            r = insert_nearest_restaurant(node)
+            r = insert_restaurant_under_budget(node)
             if r:
                 current_day_plan.append(r)
 
@@ -387,7 +491,7 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
     # เริ่มจาก start
     dfs(start_id)
 
-    # ถ้ายังไม่ครบวัน ลองเริ่มจาก P อื่น ๆ (เรียงตาม degree มากก่อน)
+    # ถ้ายังไม่ครบวัน ลองเริ่มจาก P อื่น ๆ (degree มากก่อน)
     if day_count < days:
         all_ps = sorted(
             [n for n in mst_adj.keys() if n.startswith("P") and n not in visited],
@@ -400,11 +504,9 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
             if p not in visited:
                 dfs(p)
 
-    # เก็บวันสุดท้าย
     if current_day_plan and day_count < days:
         flush_day()
 
-    # เติมวันว่างหากยังไม่ครบ
     while day_count < days:
         trip_plan_days.append([])
         day_count += 1
@@ -430,12 +532,23 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
             })
             if lat is not None and lon is not None:
                 all_places_for_accommodation.append({"lat": lat, "lon": lon})
-        detailed_plan_by_day.append({"day": day_idx, "plan": day_detail})
+        detailed_plan_by_day.append({
+            "day": day_idx,
+            "plan": day_detail,
+            "budget": {
+                "per_day": budget["per_day"],
+                "hotel": budget["hotel"],
+                "meal_each": budget["meal_each"],
+                "attractions": budget["attractions"],
+            }
+        })
 
     centroid_lat, centroid_lon = calculate_centroid(all_places_for_accommodation)
     nearest_acc = None
     if centroid_lat is not None:
-        nearest_acc = find_nearest_accommodation(accommodations, centroid_lat, centroid_lon)
+        nearest_acc = find_nearest_accommodation_under_budget(
+            accommodations, centroid_lat, centroid_lon, hotel_budget=budget["hotel"]
+        )
     if nearest_acc:
         nearest_acc["id"] = f"A{nearest_acc.get('ID')}"
         if "ID" in nearest_acc:
@@ -473,6 +586,18 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
                 "distance_km": round(dist, 2),
             })
 
+    # ---- Spend summary (จริงตามที่เลือก) ----
+    hotel_price_per_day = price_min(nearest_acc) if nearest_acc else 0
+    spend_per_day = []
+    spend_total = {"hotel": 0, "meals": 0, "attractions": 0, "total": 0}
+    for idx, day_nodes in enumerate(trip_plan_days, start=1):
+        s = compute_spend_for_day(day_nodes, place_lookup, hotel_price_per_day)
+        spend_per_day.append({"day": idx, **s})
+        spend_total["hotel"] += s["hotel"]
+        spend_total["meals"] += s["meals"]
+        spend_total["attractions"] += s["attractions"]
+        spend_total["total"] += s["total"]
+
     start_name = place_lookup.get(start_id, {}).get("Name") or place_lookup.get(start_id, {}).get("name") or start_id
 
     return {
@@ -485,6 +610,17 @@ def plan_trip(start_id, landmarks, restaurants, graph, accommodations,
         "message": "สร้างเส้นทางสำเร็จ",
         "applied_cut_edges": byflow.get("applied_cut_edges", []),
         "mst_raw_rows": byflow.get("mst", []),
+        "total_budget": total_budget,
+        "budget_per_day": budget["per_day"],
+        "spend": {
+            "per_day": spend_per_day,          # [{day, hotel, meals, attractions, total}, ...]
+            "total": spend_total["total"],     # ยอดรวมทั้งทริป
+            "breakdown": {                     # แยกย่อยทั้งทริป
+                "hotel": spend_total["hotel"],
+                "meals": spend_total["meals"],
+                "attractions": spend_total["attractions"],
+            }
+        }
     }
 
 
@@ -503,7 +639,10 @@ def main():
     k = int(sys.argv[4]) if len(sys.argv) > 4 else 20
     k_mst = int(sys.argv[5]) if len(sys.argv) > 5 else 20
     mode = sys.argv[6] if len(sys.argv) > 6 else "penalize"
-    penalty = float(sys.argv[7]) if len(sys.argv) > 7 else 1.3
+    try:
+        penalty = float(sys.argv[7]) if len(sys.argv) > 7 else 1.3
+    except Exception:
+        penalty = 1.3
     use_boykov = True
     if len(sys.argv) > 8:
         try:
@@ -511,17 +650,22 @@ def main():
         except Exception:
             use_boykov = True
 
+    total_budget = 0
+    if len(sys.argv) > 9:
+        try:
+            total_budget = int(sys.argv[9])
+            if total_budget < 0: total_budget = 0
+        except Exception:
+            total_budget = 0
+
     landmarks = load_data("http://localhost:8080/landmarks", "P")
     restaurants = load_data("http://localhost:8080/restaurants", "R")
     accommodations = load_data("http://localhost:8080/accommodations", "A")
 
     all_ids = set([start_id])
-    for p in landmarks:
-        all_ids.add(p['id'])
-    for r in restaurants:
-        all_ids.add(r['id'])
-    for a in accommodations:
-        all_ids.add(a['id'])
+    for p in landmarks: all_ids.add(p['id'])
+    for r in restaurants: all_ids.add(r['id'])
+    for a in accommodations: all_ids.add(a['id'])
 
     distance_data = load_distances_for_ids(list(all_ids))
     graph = build_graph(distance_data)
@@ -538,7 +682,8 @@ def main():
         k_mst=k_mst,
         use_boykov=use_boykov,
         mode=mode,
-        penalty=penalty
+        penalty=penalty,
+        total_budget=total_budget,
     )
     print(json.dumps(result, ensure_ascii=False))
 

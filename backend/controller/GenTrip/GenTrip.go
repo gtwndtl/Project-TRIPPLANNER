@@ -25,11 +25,43 @@ type PythonResult struct {
 	Accommodation   *Accommodation  `json:"accommodation,omitempty"`
 	Message         string          `json:"message"`
 	Error           string          `json:"error,omitempty"`
+
+	TotalBudget  int `json:"total_budget"`
+	BudgetPerDay int `json:"budget_per_day"`
+
+	// ค่าใช้จ่ายจริงจาก Python
+	Spend Spend `json:"spend"`
+}
+
+type Spend struct {
+	PerDay    []DaySpend `json:"per_day"`
+	Total     int        `json:"total"`
+	Breakdown Breakdown  `json:"breakdown"`
+}
+
+type DaySpend struct {
+	Day         int `json:"day"`
+	Hotel       int `json:"hotel"`
+	Meals       int `json:"meals"`
+	Attractions int `json:"attractions"`
+	Total       int `json:"total"`
+}
+
+type Breakdown struct {
+	Hotel       int `json:"hotel"`
+	Meals       int `json:"meals"`
+	Attractions int `json:"attractions"`
 }
 
 type DayPlan struct {
-	Day  int         `json:"day"`
-	Plan []PlaceInfo `json:"plan"`
+	Day    int         `json:"day"`
+	Plan   []PlaceInfo `json:"plan"`
+	Budget struct {
+		PerDay      int `json:"per_day"`
+		Hotel       int `json:"hotel"`
+		MealEach    int `json:"meal_each"`
+		Attractions int `json:"attractions"`
+	} `json:"budget"`
 }
 
 type PlaceInfo struct {
@@ -73,7 +105,36 @@ func (rc *RouteController) GenerateRoute(c *gin.Context) {
 		return
 	}
 
-	cmd := exec.Command("python", "Code.py", startNode, daysStr)
+	// รับงบทั้งทริป (บาท) จากผู้ใช้
+	budgetStr := c.DefaultQuery("budget", "0")
+	if _, err := strconv.Atoi(budgetStr); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "budget ต้องเป็นจำนวนเต็มไม่ติดลบ"})
+		return
+	}
+
+	// ตัวเลือกขั้นสูง (optional)
+	distance := c.DefaultQuery("distance", "4000")
+	k := c.DefaultQuery("k", "20")
+	kMst := c.DefaultQuery("k_mst", "20")
+	mode := c.DefaultQuery("mode", "penalize")     // penalize|exclude
+	penalty := c.DefaultQuery("penalty", "1.3")    // float
+	useBoykov := c.DefaultQuery("use_boykov", "1") // 1=true, 0=false
+
+	// ส่ง args ให้ Code.py
+	args := []string{
+		"Code.py",
+		startNode,
+		daysStr,
+		distance,
+		k,
+		kMst,
+		mode,
+		penalty,
+		useBoykov,
+		budgetStr, // งบรวม
+	}
+
+	cmd := exec.Command("python", args...)
 
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
