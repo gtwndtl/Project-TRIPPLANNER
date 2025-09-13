@@ -1,24 +1,40 @@
+/* =========================================================
+   TOKENS
+   ========================================================= */
 :root {
+  /* Base palette */
   --text: #111418;
   --muted: #60758a;
   --bg: #ffffff;
   --chip: #f0f2f5;
   --divider: #dbe0e6;
-  --radius: 12px;
   --danger: #e03131;
 
-  /* โทนมินิมอลหรู */
+  /* Surfaces & elevation */
   --surface: #fff;
   --surface-alt: #fbfdff;
   --line-strong: #ced7e1;
   --shadow-sm: 0 1px 2px rgba(17, 20, 24, .06);
   --shadow-md: 0 8px 24px rgba(17, 20, 24, .10);
+
+  /* Shape & sizing */
+  --radius: 12px;
+  --nav-h: 56px;            /* default navbar height (ปรับได้) */
+
+  /* Accent */
   --accent: #2f4dbd;
   --accent-06: rgba(47, 77, 189, .06);
   --accent-12: rgba(47, 77, 189, .12);
+
+  /* Controls (ให้ปุ่ม/หัวข้อวัน match กัน) */
+  --ctrl-h: 40px;
+  --ctrl-px: 12px;
+  --ctrl-font: 14px;
 }
 
-/* ===== Shell ===== */
+/* =========================================================
+   SHELL
+   ========================================================= */
 .itin-root {
   min-height: 100vh;
   color: var(--text);
@@ -29,7 +45,9 @@
     var(--bg);
 }
 
-/* ===== Layout ===== */
+/* =========================================================
+   LAYOUT
+   ========================================================= */
 .itin-container {
   display: flex;
   gap: 20px;
@@ -48,7 +66,8 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   position: sticky;
-  top: 20px;
+  top: calc(var(--nav-h) + 20px + env(safe-area-inset-top));
+  z-index: 2;
   align-self: flex-start;
 }
 
@@ -65,31 +84,26 @@
   font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.015em;
-  display: inline-block;              /* ให้กว้างเท่าข้อความ */
-  margin: 0 auto;                     /* จัดกึ่งกลางในแถว */
+  display: inline-block;
+  margin: 0 auto;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--divider); /* เส้นใต้เฉพาะข้อความ */
-  text-align: center;                 /* เผื่อมีขึ้นบรรทัดใหม่ */
+  border-bottom: 1px solid var(--divider);
+  text-align: center;
 }
 
-
-/* ===== Tabs ===== */
+/* =========================================================
+   TABS (แบบยืดเท่ากันเต็มแถบ)
+   ========================================================= */
 .itin-tabs {
   display: flex;
   gap: 32px;
   border-bottom: 1px solid var(--divider);
-
-  /* บังคับให้กว้างเต็ม */
-  width: 100%!important;
-  max-width: 100%!important;
-
+  width: 100% !important;
+  max-width: 100% !important;
   box-sizing: border-box;
 }
+.ant-tabs-nav { width: 100%; }
 
-.ant-tabs-nav {
-  width: 100%;
-}
-/* ให้ทุกชั้นกินเต็ม */
 .itin-tabs .ant-tabs,
 .itin-tabs .ant-tabs-nav,
 .itin-tabs .ant-tabs-nav-wrap,
@@ -97,39 +111,29 @@
   width: 100%;
 }
 
-/* ถ้าอยากให้แท็บอยู่กลางเฉย ๆ */
-.itin-tabs .ant-tabs-nav-list {
-  justify-content: center;
-}
-
-/* ถ้าอยากให้แต่ละแท็บ “ยืดเท่ากันเต็มแถบ” ให้ใช้ชุดนี้แทน */
 .itin-tabs .ant-tabs-nav-list {
   display: flex;
   justify-content: space-between;
 }
 .itin-tabs .ant-tabs-tab {
   flex: 1;
-  min-width: 0;            /* กันข้อความยาวดันแตก layout */
-  justify-content: center; /* ข้อความกลางแท็บ */
+  min-width: 0;
+  justify-content: center;
 }
 
-.itin-tabs .tab--active {
-  color: var(--text);
-  border-bottom-color: var(--text);
-}
-
-/* ===== Section (กล่องของแต่ละวัน) ===== */
-.itin-content>section {
+/* =========================================================
+   SECTIONS (กล่องของแต่ละวัน)
+   ========================================================= */
+.itin-content > section {
   background: var(--surface);
   border: 1px solid var(--divider);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 8px 10px 12px;
-  /* ซ้าย-ขวาเท่ากัน ดูสมมาตร */
   margin-bottom: 16px;
 }
 
-/* Header แถวบนของวัน: ซ้าย-ขวาบาลานซ์ */
+/* Header ของวัน */
 .itin-day-header {
   display: flex;
   align-items: center;
@@ -137,63 +141,29 @@
   gap: 12px;
   padding: 6px 6px 2px;
   margin: 0 6px 6px;
-  /* ให้ชิดเท่ากับการ์ดกิจกรรม (ที่มี margin 6px) */
 }
 
 /* ป้ายหัวข้อวัน (pill) */
-/* ---------- Controls tokens ---------- */
-:root{
-  --ctrl-h: 40px;          /* ความสูงเดียวกับปุ่ม */
-  --ctrl-px: 12px;         /* padding ซ้าย-ขวา */
-  --ctrl-font: 14px;       /* ขนาดตัวอักษรเดียวกับปุ่ม */
-}
-
-/* ทำให้หัวข้อวันมีขนาดเท่าปุ่ม */
 .itin-section-title {
   margin: 0;
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
   box-sizing: border-box;
-
   height: var(--ctrl-h);
   padding: 0 var(--ctrl-px);
-
   font-size: var(--ctrl-font);
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1;
-
   background: #f2f5fb;
-  border: 1px solid #e6ebf5;
-  border-radius: var(--radius);  /* ให้ทรงเดียวกับปุ่ม */
-  color: var(--text);
-}
-
-/* ปุ่มใช้ตัวแปรเดียวกันเพื่อให้ match กันเสมอ */
-.btn-secondary {
-  width: 100%;
-  height: var(--ctrl-h);
-  padding: 0 var(--ctrl-px);
-  box-sizing: border-box;
-
-  font-size: var(--ctrl-font);
-  font-weight: 700;
-
   border: 1px solid #e6ebf5;
   border-radius: var(--radius);
-  background: #f2f5fb;
   color: var(--text);
-  cursor: pointer;
-  transition: background .2s, transform .02s, box-shadow .2s;
 }
+.itin-section-title.m-0 { margin: 0; }
 
-
-.itin-section-title.m-0 {
-  margin: 0;
-}
-
-/* ปุ่มทางขวาในแถวหัวข้อวัน – ทำเป็น pill สูงเท่าหัวข้อ */
+/* ปุ่มทางขวาในแถวหัวข้อวัน */
 .itin-day-header .btn-ghost {
   height: 34px;
   padding: 0 12px;
@@ -202,25 +172,22 @@
   border: 1px solid var(--divider);
   transition: background .2s, border-color .2s, box-shadow .2s, transform .02s;
 }
-
 .itin-day-header .btn-ghost:hover {
   background: #fbfdff;
   border-color: var(--line-strong);
   box-shadow: 0 0 0 4px var(--accent-06);
 }
+.itin-day-header .btn-ghost:active { transform: translateY(1px); }
 
-.itin-day-header .btn-ghost:active {
-  transform: translateY(1px);
-}
-
-/* ===== Overview header row (ใช้ในส่วนอื่น ๆ) ===== */
+/* =========================================================
+   OVERVIEW HEADER (ส่วนอื่น ๆ)
+   ========================================================= */
 .itin-overview-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px 4px 16px;
 }
-
 .btn-ghost {
   display: inline-flex;
   align-items: center;
@@ -233,14 +200,62 @@
   font-weight: 700;
   transition: background .2s, border-color .2s, box-shadow .2s;
 }
-
 .btn-ghost:hover {
   background: #fbfdff;
   border-color: var(--line-strong);
   box-shadow: 0 0 0 4px var(--accent-06);
 }
 
-/* ===== Rows/Cards (กิจกรรมแต่ละแถว) ===== */
+/* =========================================================
+   BUTTONS (Secondary)
+   ========================================================= */
+.btn-secondary {
+  width: 100%;
+  height: var(--ctrl-h);
+  padding: 0 var(--ctrl-px);
+  box-sizing: border-box;
+  font-size: var(--ctrl-font);
+  font-weight: 700;
+  border: 1px solid #e6ebf5;
+  border-radius: var(--radius);
+  background: #f2f5fb;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .2s, transform .02s, box-shadow .2s;
+}
+.btn-secondary:hover {
+  background: #edf2ff;
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+.btn-secondary:active { transform: translateY(1px); }
+.btn-secondary:disabled { opacity: .6; cursor: not-allowed; }
+.btn-row { display: flex; gap: 8px; }
+.button-edit-group { display: flex; justify-content: space-between; }
+
+/* ไอคอนปุ่มเล็ก */
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--divider);
+  background: #fff;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .02s, box-shadow .2s;
+}
+.btn-icon:hover {
+  background: #fbfdff;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+.btn-icon:active { transform: translateY(1px); }
+.btn-icon.danger { color: var(--danger); border-color: #ffd6d6; }
+.btn-icon.danger:hover { background: #fff5f5; }
+
+/* =========================================================
+   CARD ROWS (กิจกรรม)
+   ========================================================= */
 .itin-cardrow {
   display: flex;
   align-items: center;
@@ -248,21 +263,17 @@
   min-height: 60px;
   padding: 8px 12px;
   margin: 6px 6px;
-  /* ให้ระยะข้างเท่ากับ header */
   background: #fff;
   border-radius: 10px;
   transition: background .15s ease, box-shadow .15s ease, border-color .2s;
   box-shadow: 0 1px 0 rgba(17, 20, 24, .04);
   border: 1px solid transparent;
 }
-
 .itin-cardrow:hover {
   background: #fbfdff;
   border-color: var(--divider);
   box-shadow: var(--shadow-md);
 }
-
-/* ไฮไลต์รายการ */
 .itin-cardrow.is-active {
   background: #eef4ff;
   box-shadow: inset 0 0 0 1px #d9e5ff, var(--shadow-sm);
@@ -280,10 +291,7 @@
   color: var(--text);
   flex-shrink: 0;
 }
-
-.itin-cardrow-icon .icon {
-  font-size: 18px;
-}
+.itin-cardrow-icon .icon { font-size: 18px; }
 
 /* ข้อความ */
 .itin-cardrow-text {
@@ -292,13 +300,7 @@
   gap: 2px;
   flex: 1;
 }
-
-.itin-cardrow-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+.itin-cardrow-right { display: flex; align-items: center; gap: 8px; }
 .itin-cardrow-text .title,
 .itin-cardrow-text .title-itin {
   font-size: 15px;
@@ -307,203 +309,222 @@
   line-height: 1.25;
   margin: 0 0 2px;
 }
-
 .itin-cardrow-text .sub {
   font-size: 12.5px;
   color: var(--muted);
   margin: 0;
 }
 
-/* ปุ่มไอคอนเล็ก */
-.btn-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  border: 1px solid var(--divider);
-  background: #fff;
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-  transition: background .15s, border-color .15s, transform .02s, box-shadow .2s;
-}
-
-.btn-icon:hover {
-  background: #fbfdff;
-  border-color: var(--line-strong);
-  box-shadow: 0 0 0 4px var(--accent-06);
-}
-
-.btn-icon:active {
-  transform: translateY(1px);
-}
-
-.btn-icon.danger {
-  color: var(--danger);
-  border-color: #ffd6d6;
-}
-
-.btn-icon.danger:hover {
-  background: #fff5f5;
-}
-
-/* ===== ปุ่มรอง (แก้ไข/ยกเลิก/บันทึก) ===== */
-.itin-actions {
-  padding: 12px 16px;
-}
-
-
-
-.btn-secondary:hover {
-  background: #edf2ff;
-  box-shadow: 0 0 0 4px var(--accent-06);
-}
-
-.btn-secondary:active {
-  transform: translateY(1px);
-}
-
-.btn-secondary:disabled {
-  opacity: .6;
-  cursor: not-allowed;
-}
-
-.btn-row {
-  display: flex;
-  gap: 8px;
-}
-
-.button-edit-group {
-  display: flex;
-  justify-content: space-between;
-}
-
-/* Select ขณะแก้ไข */
-.itin-cardrow .ant-select {
-  min-width: 320px;
-  max-width: 420px;
-}
-
+/* =========================================================
+   SELECT (ขณะแก้ไข)
+   ========================================================= */
+.itin-cardrow .ant-select { min-width: 320px; max-width: 420px; }
 @media (max-width: 640px) {
-  .itin-cardrow .ant-select {
-    min-width: 100%;
-    max-width: 100%;
-  }
+  .itin-cardrow .ant-select { min-width: 100%; max-width: 100%; }
 }
 
-/* Summary list ให้เป็นก้อนต่อเนื่อง */
-.itin-summary .itin-cardrow+.itin-cardrow {
-  border-top: 1px solid var(--divider);
-}
-
+/* =========================================================
+   SUMMARY LIST (ให้เป็นก้อนต่อเนื่อง)
+   ========================================================= */
+.itin-summary .itin-cardrow + .itin-cardrow { border-top: 1px solid var(--divider); }
 .itin-summary .itin-cardrow {
   border-radius: 0;
   box-shadow: inset 0 -1px 0 var(--divider);
   margin: 0;
 }
-
 .itin-summary .itin-cardrow:first-child {
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
 }
-
 .itin-summary .itin-cardrow:last-child {
   border-bottom-left-radius: var(--radius);
   border-bottom-right-radius: var(--radius);
   box-shadow: none;
 }
 
-/* Loading */
-.itin-loading {
-  padding: 12px 16px;
-}
+/* =========================================================
+   MISC
+   ========================================================= */
+.itin-loading { padding: 12px 16px; }
+.fab-print { right: 24px; bottom: 24px; }
 
-/* Floating print button */
-.fab-print {
-  right: 24px;
-  bottom: 24px;
-}
-
-/* ===== Responsive ===== */
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 @media (max-width: 1280px) {
-  :root {
-    --sidebar-w: 320px;
-  }
+  :root { --sidebar-w: 320px; }
 }
-
 @media (max-width: 1024px) {
-  :root {
-    --sidebar-w: 300px;
-  }
-
-  .itin-page-title {
-    font-size: 28px;
-  }
+  :root { --sidebar-w: 300px; }
+  .itin-page-title { font-size: 28px; }
 }
-
 @media (max-width: 960px) {
-  .itin-container {
-    flex-direction: column;
-    gap: 16px;
-  }
-
+  .itin-container { flex-direction: column; gap: 16px; }
   .itin-summary {
     width: 100%;
     position: static;
     top: auto;
     box-shadow: 0 1px 1px rgba(17, 20, 24, .03);
   }
-
-  .itin-content {
-    max-width: 100%;
-  }
-
-  .itin-content>section {
-    margin-bottom: 12px;
-  }
-
-  .itin-section-title {
-    font-size: 16px;
-  }
+  .itin-content { max-width: 100%; }
+  .itin-content > section { margin-bottom: 12px; }
+  .itin-section-title { font-size: 16px; }
 }
 
-/* ===== Print ===== */
+/* =========================================================
+   PRINT
+   ========================================================= */
 @media print {
-  .no-print {
-    display: none !important;
-  }
-
-  .itin-root {
-    background: #fff;
-  }
-
-  .itin-summary {
-    border: 0;
-    box-shadow: none;
-    background: #fff;
-  }
-
-  .itin-content>section {
+  .no-print { display: none !important; }
+  .itin-root { background: #fff; }
+  .itin-summary { border: 0; box-shadow: none; background: #fff; }
+  .itin-content > section {
     page-break-inside: avoid;
     border: 1px solid #cfd8e3;
     box-shadow: none;
   }
-
   .itin-cardrow {
     margin: 4px 0;
     box-shadow: none;
     border: 1px solid #eaeef4;
   }
 }
-/* เดิม: top: 20px;  →  เปลี่ยนให้หลบ navbar */
-.itin-summary{
-  position: sticky;
-  top: calc(var(--nav-h) + 20px + env(safe-area-inset-top));
-  z-index: 2; /* อยู่ใต้ navbar แต่เหนือคอนเทนต์อื่น ๆ */
+
+/* =========================================================
+   MODAL / POP-UP THEME (Ant Design)  className="itin-modal"
+   ========================================================= */
+.itin-modal .ant-modal { max-width: 520px; }
+.itin-modal .ant-modal-content {
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow-md);
+  padding: 18px 20px;
 }
 
-/* มือถือ */
-@media (max-width: 960px){
-  .itin-summary{
-    top: calc(var(--nav-h) + 12px + env(safe-area-inset-top));
-  }
+/* Header & Title */
+.itin-modal .ant-modal-header {
+  background: transparent;
+  border-bottom: 0;
+  padding: 8px 20px 0;
 }
+.itin-modal .ant-modal-title,
+.itin-modal .ant-modal-confirm .ant-modal-confirm-title {
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-size: 18px;
+  text-align: center;
+}
+
+/* Body */
+.itin-modal .ant-modal-body {
+  padding: 12px 20px 0;
+  color: var(--text);
+}
+
+/* Close button */
+.itin-modal .ant-modal-close { top: 10px; right: 12px; }
+
+/* Confirm layout (จัดกลางทั้งหมด) */
+.itin-modal .ant-modal-confirm-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.itin-modal .ant-modal-confirm .ant-modal-confirm-content {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Icon (วงกลม accent) */
+.itin-modal .ant-modal-confirm-body > .anticon {
+  font-size: 18px;
+  color: var(--accent);
+  background: var(--accent-06);
+  border-radius: 999px;
+  padding: 8px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.itin-modal .ant-modal-confirm-warning .anticon,
+.itin-modal .ant-modal-confirm-error .anticon {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+/* Buttons */
+.itin-modal .ant-modal-confirm-btns {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.itin-modal .ant-btn {
+  height: 36px;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0 14px;
+  font-weight: 700;
+  transition: background .2s, border-color .2s, box-shadow .2s, transform .02s;
+}
+.itin-modal .ant-btn:active { transform: translateY(1px); }
+
+/* Default */
+.itin-modal .ant-btn-default {
+  background: var(--chip);
+  border-color: var(--divider);
+  color: var(--text);
+}
+.itin-modal .ant-btn-default:hover,
+.itin-modal .ant-btn-default:focus {
+  background: var(--surface-alt);
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+
+/* Primary */
+.itin-modal .ant-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.itin-modal .ant-btn-primary:hover,
+.itin-modal .ant-btn-primary:focus {
+  filter: brightness(0.96);
+  box-shadow: 0 0 0 4px var(--accent-12);
+}
+
+/* Dangerous (เช่น ลบทริป) */
+.itin-modal .ant-btn-dangerous {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.itin-modal .ant-btn-dangerous:hover,
+.itin-modal .ant-btn-dangerous:focus {
+  filter: brightness(0.96);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 15%, transparent);
+}
+
+/* Mask */
+.ant-modal-root .ant-modal-mask {
+  background-color: rgba(17, 20, 24, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+/* Responsive for modal */
+@media (max-width: 576px) {
+  .itin-modal .ant-modal { max-width: calc(100vw - 32px); }
+  .itin-modal .ant-modal-content {
+    padding: 16px;
+    border-radius: calc(var(--radius) + 2px);
+  }
+  .itin-modal .ant-btn { min-width: 96px; }
+}
+
+/* =========================================================
+   END
+   ========================================================= */

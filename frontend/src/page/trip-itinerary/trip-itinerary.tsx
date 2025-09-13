@@ -1,5 +1,5 @@
 // src/page/trip-itinerary/TripItinerary.tsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarOutlined,
   TeamOutlined,
@@ -31,7 +31,7 @@ import {
   DeleteTrip,
   CreateReview,
   GetAllReviews,
-} from "../../services/https"; // <-- NOTE: keep your original path "https" if that's correct in your project
+} from "../../services/https";
 import type { TripInterface } from "../../interfaces/Trips";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { DefaultOptionType } from "antd/es/select";
@@ -40,11 +40,29 @@ import { Button, Empty, message, Modal, Spin, Tabs, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 import RateReviewModal from "../../component/review/review";
 import { useUserId } from "../../hooks/useUserId";
-
 import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
 
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
-const SP_TABLE_NAME = "shortestpaths"; // ✅ ตาม GORM struct Shortestpath (ไม่มี underscore)
+const SP_TABLE_NAME = "shortestpaths";
+
+// ===== Utils =====
+const deepClone = <T,>(obj: T): T => {
+  if (typeof (globalThis as any).structuredClone === "function") {
+    return (globalThis as any).structuredClone(obj);
+  }
+  return JSON.parse(JSON.stringify(obj));
+};
+
+// Render **bold** โดยไม่ใช้ dangerouslySetInnerHTML
+const renderDescNode = (raw?: string) => {
+  const text = raw ?? "-";
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((p, i) => {
+    const m = /^\*\*(.+)\*\*$/.exec(p);
+    if (m) return <strong key={i}>{m[1]}</strong>;
+    return <React.Fragment key={i}>{p}</React.Fragment>;
+  });
+};
 
 // ===== Kind helpers =====
 const inferKind = (code?: string): PlaceKind => {
@@ -54,7 +72,6 @@ const inferKind = (code?: string): PlaceKind => {
   return "landmark";
 };
 
-// ใช้บริบทเดา ถ้า current ว่าง (นำ logic จาก TripSummaryPage)
 const inferKindSmart = (
   currentCode: string,
   prevCode: string,
@@ -104,9 +121,7 @@ const TripItinerary: React.FC = () => {
     const id = localStorage.getItem("TripID");
     return id ? Number(id) : null;
   });
-  const [isLogin, setIsLogin] = useState<boolean>(
-    () => localStorage.getItem("isLogin") === "true"
-  );
+  const [isLogin, setIsLogin] = useState<boolean>(() => localStorage.getItem("isLogin") === "true");
 
   const [tabKey, setTabKey] = useState<string>(() =>
     localStorage.getItem("isLogin") === "true" ? "overview" : "itinerary"
@@ -137,11 +152,9 @@ const TripItinerary: React.FC = () => {
     };
   }, []);
 
-  // ✅ ไม่ล็อกอิน → ส่งกลับ trip-chat ทันที (ไม่ต้องพึ่ง activeTripId)
+  // ไม่ล็อกอิน → ส่งกลับ trip-chat
   useEffect(() => {
-    if (!isLogin) {
-      navigate("/trip-chat", { replace: true });
-    }
+    if (!isLogin) navigate("/trip-chat", { replace: true });
   }, [isLogin, navigate]);
 
   // ===== Data states =====
@@ -154,22 +167,36 @@ const TripItinerary: React.FC = () => {
   // ===== Per-day edit state =====
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [editedData, setEditedData] = useState<Record<number, ShortestpathInterface[]>>({});
+  const [savingDay, setSavingDay] = useState<number | null>(null);
 
   // ===== Row options states =====
   const [rowOptions, setRowOptions] = useState<Record<string, DefaultOptionType[]>>({});
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({});
   const [rowLoadedOnce, setRowLoadedOnce] = useState<Record<string, boolean>>({});
-
   const [reviewedTripIds, setReviewedTripIds] = useState<Set<number>>(new Set());
 
-  // ===== Helpers: set active trip (single source of truth) =====
+  // ===== Request token (race guard) =====
+  const reqIdRef = useRef(0);
+
+  // ===== Cache & Debounce สำหรับตัวเลือก =====
+  const optionsCacheRef = useRef(new Map<string, DefaultOptionType[]>());
+  const ensureRowOptionsTimerRef = useRef<number | null>(null);
+  const ensureRowOptionsDebounced = (fn: () => void) => {
+    if (ensureRowOptionsTimerRef.current) window.clearTimeout(ensureRowOptionsTimerRef.current);
+    ensureRowOptionsTimerRef.current = window.setTimeout(fn, 120);
+  };
+  useEffect(() => {
+    optionsCacheRef.current.clear(); // เปลี่ยนทริป → ล้าง cache
+  }, [activeTripId]);
+
+  // ===== Helpers: set active trip =====
   const setActiveTrip = useCallback((id: number) => {
     setActiveTripId(id);
     localStorage.setItem("TripID", String(id));
     window.dispatchEvent(new Event("TripIDChanged"));
   }, []);
 
-  // โหลดเมื่อ login + มี userId + หลังโหลด trips เสร็จ
+  // โหลดรีวิวของฉัน
   useEffect(() => {
     if (!isLogin || !userIdNum) return;
     (async () => {
@@ -183,47 +210,50 @@ const TripItinerary: React.FC = () => {
     })();
   }, [isLogin, userIdNum, trips.length]);
 
+  // ===== refreshAll: โหลด Trip → ใช้ Con_id ดึง Condition (มี race guard) =====
   const refreshAll = useCallback(
     async (tripId: number) => {
       setLoading(true);
+      const myReqId = ++reqIdRef.current;
       try {
-        const [tripRes, userRes, condRes] = await Promise.all([
-          GetTripById(tripId),
+        const tripRes = await GetTripById(tripId);
+        const [userRes, condRes] = await Promise.all([
           userIdNum ? GetUserById(userIdNum) : Promise.resolve(null),
-          GetConditionById(tripId),
+          tripRes?.Con_id ? GetConditionById(Number(tripRes.Con_id)) : Promise.resolve(null),
         ]);
-        setTrip(tripRes || null);
-        setUser(userRes || null);
-        setUserCondition(condRes || null);
+        if (reqIdRef.current === myReqId) {
+          setTrip(tripRes || null);
+          setUser(userRes || null);
+          setUserCondition(condRes || null);
+        }
       } catch (err) {
-        console.error("Error refreshing data:", err);
-        msg.error("โหลดข้อมูลทริปล้มเหลว");
+        if (reqIdRef.current === myReqId) {
+          console.error("Error refreshing data:", err);
+          msg.error("โหลดข้อมูลทริปล้มเหลว");
+        }
       } finally {
-        setLoading(false);
+        if (reqIdRef.current === myReqId) setLoading(false);
       }
     },
     [msg, userIdNum]
   );
 
   useEffect(() => {
-    if (activeTripId) {
-      refreshAll(activeTripId);
-    }
+    if (activeTripId) refreshAll(activeTripId);
   }, [activeTripId, refreshAll]);
 
-  // ===== Fetch trips + auto-select/redirect logic =====
+  // ===== Fetch trips + auto-select/redirect =====
   const fetchTripsForUser = useCallback(async () => {
     if (!userIdNum || !isLogin) return;
     try {
       const allConditions = await GetAllConditions();
-      const userConditions = allConditions.filter((c: any) => c.User_id === userIdNum);
-      const conditionIds = userConditions.map((c: any) => c.ID);
+      const userConditions = allConditions.filter((c: any) => Number(c.User_id) === Number(userIdNum));
+      const conditionIds = userConditions.map((c: any) => Number(c.ID));
 
       const allTrips = await GetAllTrips();
-      const userTrips = allTrips.filter((t: any) => conditionIds.includes(t.Con_id));
+      const userTrips = allTrips.filter((t: any) => conditionIds.includes(Number(t.Con_id)));
       setTrips(userTrips);
 
-      // ไม่มีทริปเลย → กลับไป trip-chat
       if (userTrips.length === 0) {
         localStorage.removeItem("TripID");
         window.dispatchEvent(new Event("TripIDChanged"));
@@ -231,7 +261,6 @@ const TripItinerary: React.FC = () => {
         return;
       }
 
-      // มีทริป → ถ้าไม่มี activeTripId หรือ activeTripId ไม่อยู่ในลิสต์ → เลือกตัวแรก
       const firstId = Number(userTrips[0].ID);
       const activeExistsInList = userTrips.some((t) => Number(t.ID ?? -1) === Number(activeTripId));
 
@@ -248,37 +277,24 @@ const TripItinerary: React.FC = () => {
     fetchTripsForUser();
   }, [fetchTripsForUser]);
 
-  const handleViewTrip = useCallback(
-    (tripId: number) => {
-      setActiveTrip(tripId);
-      refreshAll(tripId);
-
-      // เลื่อนไปบนสุดของหน้าแบบนุ่ม ๆ ทุกครั้งที่ผู้ใช้กดเลือกทริป
-      if (typeof window !== "undefined") {
-        window.requestAnimationFrame(() => {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        });
-      }
-    },
-    [setActiveTrip, refreshAll]
-  );
-
-
+  // ===== Group + sort by PathIndex (ต้องมาก่อน start/end edit เพราะใช้ในนั้น) =====
   const groupedByDay = useMemo(() => {
-    return (
-      trip?.ShortestPaths?.reduce((acc, curr) => {
-        const day = curr.Day ?? 0;
-        if (!acc[day]) acc[day] = [];
-        acc[day].push(curr);
-        return acc;
-      }, {} as Record<number, ShortestpathInterface[]>) ?? {}
-    );
+    const map = (trip?.ShortestPaths ?? []).reduce((acc, curr) => {
+      const day = curr.Day ?? 0;
+      if (!acc[day]) acc[day] = [];
+      acc[day].push(curr);
+      return acc;
+    }, {} as Record<number, ShortestpathInterface[]>);
+    Object.keys(map).forEach((d) => {
+      map[+d].sort((a, b) => (a.PathIndex ?? 0) - (b.PathIndex ?? 0));
+    });
+    return map;
   }, [trip]);
 
-  // ===== Edit toggle per day =====
+  // ===== Edit toggle per day (ประกาศก่อนใช้ใน switchTripWithGuard) =====
   const startEditDay = (day: number) => {
     const base = groupedByDay[day] ?? [];
-    setEditedData((prev) => ({ ...prev, [day]: JSON.parse(JSON.stringify(base)) }));
+    setEditedData((prev) => ({ ...prev, [day]: deepClone(base) }));
     setEditingDay(day);
   };
   const endEditDay = () => {
@@ -286,11 +302,52 @@ const TripItinerary: React.FC = () => {
     setEditedData({});
   };
 
+  // ===== เปลี่ยนทริปแบบมี Guard เมื่อมีการแก้ไขค้าง =====
+  const switchTripWithGuard = useCallback(
+    (tripId: number) => {
+      const doSwitch = () => {
+        setActiveTrip(tripId);
+        refreshAll(tripId);
+        if (typeof window !== "undefined") {
+          window.requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+        }
+      };
+      if (editingDay !== null) {
+        modal.confirm({
+          className: "itin-modal",
+          centered: true,
+          title: "มีการแก้ไขที่ยังไม่ได้บันทึก",
+          content: "คุณต้องการออกจากโหมดแก้ไขของวันนี้หรือไม่?",
+          okText: "ออกและยกเลิก",
+          cancelText: "อยู่ต่อ",
+          onOk: () => {
+            endEditDay();
+            doSwitch();
+          },
+        });
+        return;
+      }
+      doSwitch();
+    },
+    [editingDay, modal, setActiveTrip, refreshAll, endEditDay]
+  );
+
+  // ===== Unsaved guard (ออกหน้า/สลับแท็บ) =====
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (editingDay !== null) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [editingDay]);
+
   // ===== Helpers (Save) =====
-  const getChangedRows = (
-    original: ShortestpathInterface[],
-    edited: ShortestpathInterface[]
-  ) => {
+  const getChangedRows = (original: ShortestpathInterface[], edited: ShortestpathInterface[]) => {
     const origById = new Map<number, ShortestpathInterface>();
     original.forEach((o) => {
       if (o.ID != null) origById.set(o.ID as number, o);
@@ -304,11 +361,7 @@ const TripItinerary: React.FC = () => {
 
   const getNewAccommodationCode = (changed: ShortestpathInterface[]) => {
     const aCodes = Array.from(
-      new Set(
-        changed
-          .map((r) => r.ToCode?.toUpperCase() || "")
-          .filter((c) => c.startsWith("A"))
-      )
+      new Set(changed.map((r) => r.ToCode?.toUpperCase() || "").filter((c) => c.startsWith("A")))
     );
     if (aCodes.length === 0) return null;
     if (aCodes.length > 1) {
@@ -325,14 +378,19 @@ const TripItinerary: React.FC = () => {
   };
 
   const handleSaveDay = async (day: number) => {
+    if (savingDay != null) return;
+    setSavingDay(day);
+
     const TripIDLS = Number(localStorage.getItem("TripID") || 0);
     if (!TripIDLS) {
       msg.error("ไม่พบ TripID");
+      setSavingDay(null);
       return;
     }
 
     const edited = editedData[day];
     if (!edited) {
+      setSavingDay(null);
       endEditDay();
       return;
     }
@@ -342,6 +400,7 @@ const TripItinerary: React.FC = () => {
 
     if (changed.length === 0) {
       msg.info("ไม่มีการเปลี่ยนแปลง");
+      setSavingDay(null);
       endEditDay();
       return;
     }
@@ -395,7 +454,7 @@ const TripItinerary: React.FC = () => {
       });
 
       msg.success(
-        getNewAccommodationCode(changed)
+        newAcc
           ? "บันทึกสำเร็จ (อัปเดตที่พักทั้งทริป และแก้รายการอื่นแล้ว)"
           : `บันทึกสำเร็จ ${changed.length} รายการ`
       );
@@ -404,6 +463,7 @@ const TripItinerary: React.FC = () => {
     } catch (e: any) {
       msg.error(e?.message || "บันทึกไม่สำเร็จ");
     } finally {
+      setSavingDay(null);
       endEditDay();
     }
   };
@@ -423,15 +483,21 @@ const TripItinerary: React.FC = () => {
     return { prevCode, nextCode };
   };
 
-  const ensureRowOptions = async (
-    day: number,
-    index: number,
-    record: ShortestpathInterface
-  ) => {
+  const ensureRowOptions = async (day: number, index: number, record: ShortestpathInterface) => {
     const key = `${day}:${index}`;
     const { prevCode, nextCode } = getPrevNext(day, index, record);
     const current = editedData[day]?.[index]?.ToCode || record.ToCode || "";
     const kind = inferKindSmart(current, prevCode, nextCode, record);
+
+    const cacheKey =
+      kind === "accommodation" ? `A|${day}|${current}` : `${kind}|${prevCode}|${nextCode}|${current}`;
+
+    const cached = optionsCacheRef.current.get(cacheKey);
+    if (cached) {
+      setRowOptions((s) => ({ ...s, [key]: cached }));
+      setRowLoadedOnce((s) => ({ ...s, [key]: true }));
+      return;
+    }
 
     try {
       setRowLoading((s) => ({ ...s, [key]: true }));
@@ -446,6 +512,7 @@ const TripItinerary: React.FC = () => {
           exclude: current || undefined,
           sp_table: SP_TABLE_NAME,
         });
+        optionsCacheRef.current.set(cacheKey, options);
         setRowOptions((s) => ({ ...s, [key]: options }));
         setRowLoadedOnce((s) => ({ ...s, [key]: true }));
         return;
@@ -466,6 +533,7 @@ const TripItinerary: React.FC = () => {
         exclude: current || undefined,
       });
 
+      optionsCacheRef.current.set(cacheKey, options);
       setRowOptions((s) => ({ ...s, [key]: options }));
       setRowLoadedOnce((s) => ({ ...s, [key]: true }));
     } catch (e: any) {
@@ -500,6 +568,7 @@ const TripItinerary: React.FC = () => {
   // ===== Modal confirm for delete =====
   const confirmDeleteTrip = (t: TripInterface) => {
     modal.confirm({
+      className: "itin-modal",
       title: "ลบทริปนี้?",
       content: `คุณต้องการลบ "${t.Name}" หรือไม่?`,
       okText: "ลบ",
@@ -516,7 +585,7 @@ const TripItinerary: React.FC = () => {
           msg.success("ลบทริปสำเร็จ");
           await fetchTripsForUser();
           if (Number(t.ID) === Number(activeTripId)) {
-            if (nextCandidate) handleViewTrip(Number(nextCandidate.ID));
+            if (nextCandidate) switchTripWithGuard(Number(nextCandidate.ID));
             else {
               localStorage.removeItem("TripID");
               window.dispatchEvent(new Event("TripIDChanged"));
@@ -563,111 +632,33 @@ const TripItinerary: React.FC = () => {
     }
   };
 
-  // ===== Tabs =====
-  const tabItems = useMemo(() => {
-    const items: any[] = [];
-    if (isLogin) {
-      items.push({
-        key: "overview",
-        label: "Overview",
-        children: (
-          <>
-            {trips.length > 0 ? (
-              trips.map((t, idx) => {
-                const idNum = Number(t.ID);
-                const isActive = idNum === Number(activeTripId);
-                const hasReviewed = reviewedTripIds.has(idNum);
-
-                return (
-                  <div key={t.ID ?? idx}>
-                    <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
-                      <div className="itin-cardrow-text">
-                        <p
-                          className="title"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => handleViewTrip(idNum)}
-                        >
-                          {idx + 1} - {t.Name}
-                        </p>
-                      </div>
-                      <div className="itin-cardrow-right">
-                        {!hasReviewed && (
-                          <Tooltip title="ให้คะแนนทริป">
-                            <button
-                              type="button"
-                              className="btn-icon rate"
-                              aria-label="Rate trip"
-                              onClick={() => {
-                                if (!isActive) handleViewTrip(idNum);
-                                openRateModal();
-                              }}
-                            >
-                              <StarFilled />
-                            </button>
-                          </Tooltip>
-                        )}
-
-                        <Tooltip title="ลบ">
-                          <button
-                            type="button"
-                            className="btn-icon danger"
-                            aria-label="Delete trip"
-                            onClick={() => confirmDeleteTrip(t)}
-                          >
-                            <DeleteOutlined />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p>No trips found.</p>
-            )}
-          </>
-        ),
-      });
-    }
-    items.push({
-      key: "details",
-      label: "Details",
-      children: (
-        <>
-          {summary.map((s, i) => (
-            <div className="itin-cardrow" key={i}>
-              <div className="itin-cardrow-icon">
-                <SummaryIcon name={s.icon} />
-              </div>
-              <div className="itin-cardrow-text">
-                <p className="title">{s.title}</p>
-                <p className="sub">{s.subtitle}</p>
-              </div>
-            </div>
-          ))}
-        </>
-      ),
-    });
-    return items;
-  }, [isLogin, trips, summary, handleViewTrip, activeTripId, reviewedTripIds]);
-
+  // ===== Tabs (guard เมื่อมีของแก้ไขค้าง) =====
   const onTabsChange = (key: string) => {
-    if (key === "overview" && editingDay !== null) {
-      endEditDay();
-      msg.info("ปิดโหมดแก้ไขของวันปัจจุบัน เนื่องจากสลับไป Overview");
+    if (editingDay !== null) {
+      modal.confirm({
+        title: "มีการแก้ไขที่ยังไม่ได้บันทึก",
+        content: "คุณต้องการออกจากโหมดแก้ไขของวันนี้หรือไม่?",
+        okText: "ออกและยกเลิก",
+        cancelText: "อยู่ต่อ",
+        onOk: () => {
+          endEditDay();
+          setTabKey(key);
+        },
+      });
+      return;
     }
     setTabKey(key);
   };
 
-  const codes = useMemo(
+  const groupedCodes = useMemo(
     () =>
-    (Object.values(groupedByDay)
-      .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
-      .filter(Boolean) as string[]),
+      (Object.values(groupedByDay)
+        .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
+        .filter(Boolean) as string[]),
     [groupedByDay]
   );
 
-  const placeNameMap = usePlaceNamesHybrid(codes);
+  const placeNameMap = usePlaceNamesHybrid(groupedCodes);
   const displayName = (code?: string | null) =>
     (code && placeNameMap[code.toUpperCase()]) || code || "-";
 
@@ -687,7 +678,94 @@ const TripItinerary: React.FC = () => {
             </p>
           </div>
           <div className="itin-tabs">
-            <Tabs activeKey={tabKey} onChange={onTabsChange} items={tabItems} />
+            <Tabs
+              activeKey={tabKey}
+              onChange={onTabsChange}
+              items={[
+                ...(isLogin
+                  ? [
+                      {
+                        key: "overview",
+                        label: "Overview",
+                        children: (
+                          <>
+                            {trips.length > 0 ? (
+                              trips.map((t, idx) => {
+                                const idNum = Number(t.ID);
+                                const isActive = idNum === Number(activeTripId);
+                                const hasReviewed = reviewedTripIds.has(idNum);
+                                return (
+                                  <div key={t.ID ?? idx}>
+                                    <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
+                                      <div className="itin-cardrow-text">
+                                        <p
+                                          className="title"
+                                          style={{ cursor: "pointer" }}
+                                          onClick={() => switchTripWithGuard(idNum)}
+                                        >
+                                          {idx + 1} - {t.Name}
+                                        </p>
+                                      </div>
+                                      <div className="itin-cardrow-right">
+                                        {!hasReviewed && (
+                                          <Tooltip title="ให้คะแนนทริป">
+                                            <button
+                                              type="button"
+                                              className="btn-icon rate"
+                                              aria-label="Rate trip"
+                                              onClick={() => {
+                                                if (!isActive) switchTripWithGuard(idNum);
+                                                openRateModal();
+                                              }}
+                                            >
+                                              <StarFilled />
+                                            </button>
+                                          </Tooltip>
+                                        )}
+                                        <Tooltip title="ลบ">
+                                          <button
+                                            type="button"
+                                            className="btn-icon danger"
+                                            aria-label="Delete trip"
+                                            onClick={() => confirmDeleteTrip(t)}
+                                          >
+                                            <DeleteOutlined />
+                                          </button>
+                                        </Tooltip>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p>No trips found.</p>
+                            )}
+                          </>
+                        ),
+                      } as const,
+                    ]
+                  : []),
+                {
+                  key: "details",
+                  label: "Details",
+                  children: (
+                    <>
+                      {summary.map((s, i) => (
+                        <div className="itin-cardrow" key={i}>
+                          <div className="itin-cardrow-icon">
+                            <SummaryIcon name={s.icon} />
+                          </div>
+                          <div className="itin-cardrow-text">
+                            <p className="title">{s.title}</p>
+                            <p className="sub">{s.subtitle}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ),
+                } as const,
+              ]}
+            />
           </div>
         </aside>
 
@@ -715,7 +793,12 @@ const TripItinerary: React.FC = () => {
                   <div className="button-edit-group">
                     {isEditingThisDay ? (
                       <>
-                        <Button className="btn-secondary" icon={<CloseOutlined />} onClick={endEditDay}>
+                        <Button
+                          className="btn-secondary"
+                          icon={<CloseOutlined />}
+                          onClick={endEditDay}
+                          disabled={savingDay === dayNum}
+                        >
                           ยกเลิก
                         </Button>
                         <Button
@@ -724,6 +807,8 @@ const TripItinerary: React.FC = () => {
                           icon={<SaveOutlined />}
                           onClick={() => handleSaveDay(dayNum)}
                           style={{ marginLeft: 8 }}
+                          disabled={savingDay === dayNum}
+                          loading={savingDay === dayNum}
                         >
                           บันทึก
                         </Button>
@@ -736,60 +821,62 @@ const TripItinerary: React.FC = () => {
                   </div>
                 </div>
 
-                {rows.map((record, idx) => {
-                  const key = `${dayNum}:${idx}`;
-                  return (
-                    <div className="itin-cardrow" key={record.ID ?? key}>
-                      <div className="itin-cardrow-icon">
-                        <ItemIcon code={record.ToCode} />
+                {rows.length === 0 ? (
+                  <div className="itin-empty-day">
+                    <Empty description="ยังไม่มีแผนสำหรับวันนี้" />
+                  </div>
+                ) : (
+                  rows.map((record, idx) => {
+                    const key = `${dayNum}:${idx}`;
+                    return (
+                      <div className="itin-cardrow" key={record.ID ?? key}>
+                        <div className="itin-cardrow-icon">
+                          <ItemIcon code={record.ToCode} />
+                        </div>
+
+                        <div className="itin-cardrow-text">
+                          <p className="title-itin">{renderDescNode(record.ActivityDescription)}</p>
+
+                          <p className="sub">
+                            {isEditingThisDay ? (
+                              <Select
+                                showSearch
+                                value={editedData[dayNum]?.[idx]?.ToCode ?? record.ToCode}
+                                onChange={(v) => handleLocationChange(dayNum, idx, v)}
+                                placeholder="เลือกสถานที่แนะนำตามเส้นทาง"
+                                options={rowOptions[key] ?? []}
+                                optionFilterProp="label"
+                                filterOption={(input, option) =>
+                                  (option?.label?.toString() ?? "").toLowerCase().includes(input.toLowerCase())
+                                }
+                                notFoundContent={renderNotFound(key)}
+                                loading={!!rowLoading[key]}
+                                onOpenChange={(open) => {
+                                  if (open) ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record));
+                                }}
+                                onFocus={() =>
+                                  ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record))
+                                }
+                                onClick={() =>
+                                  ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record))
+                                }
+                                style={{ minWidth: 360 }}
+                                dropdownMatchSelectWidth={false}
+                                disabled={savingDay === dayNum}
+                              />
+                            ) : (
+                              displayName(record.ToCode)
+                            )}
+                          </p>
+
+                          <p className="sub">
+                            {record.StartTime} - {record.EndTime}
+                          </p>
+                        </div>
                       </div>
-
-                      <div className="itin-cardrow-text">
-                        <p
-                          className="title-itin"
-                          dangerouslySetInnerHTML={{
-                            __html: (record.ActivityDescription || "-").replace(
-                              /\*\*(.*?)\*\*/g,
-                              "<strong>$1</strong>"
-                            ),
-                          }}
-                        />
-
-                        <p className="sub">
-                          {isEditingThisDay ? (
-                            <Select
-                              showSearch
-                              value={editedData[dayNum]?.[idx]?.ToCode ?? record.ToCode}
-                              onChange={(v) => handleLocationChange(dayNum, idx, v)}
-                              placeholder="เลือกสถานที่แนะนำตามเส้นทาง"
-                              options={rowOptions[key] ?? []}
-                              optionFilterProp="label"
-                              filterOption={(input, option) =>
-                                (option?.label?.toString() ?? "")
-                                  .toLowerCase()
-                                  .includes(input.toLowerCase())
-                              }
-                              notFoundContent={renderNotFound(key)}
-                              loading={!!rowLoading[key]}
-                              onOpenChange={(open) => {
-                                if (open) void ensureRowOptions(dayNum, idx, record);
-                              }}
-                              onFocus={() => void ensureRowOptions(dayNum, idx, record)}
-                              onClick={() => void ensureRowOptions(dayNum, idx, record)}
-                              style={{ minWidth: 320 }}
-                            />
-                          ) : (
-                            displayName(record.ToCode)
-                          )}
-                        </p>
-
-                        <p className="sub">
-                          {record.StartTime} - {record.EndTime}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </section>
             );
           })}
