@@ -1,233 +1,133 @@
-/* ========== Default (screen): hide print canvas ========== */
+/* ================= Screen (คงเดิม) ================= */
+.fab-print { position: fixed; right: 20px; bottom: 20px; z-index: 1100; }
+.fab-print .ant-btn { width: 48px; height: 48px; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+
 .print-sheet {
   display: none;
+  color: #111;
+  font: 14.5px/1.7 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans", "Prompt", system-ui, sans-serif !important;
 }
+.print-sheet, .print-sheet * { box-sizing: border-box; overflow-wrap: anywhere; word-break: normal; }
 
-/* Base colors */
-:root {
-  --ink: #0f172a;        /* slate-900 */
-  --muted: #60758a;      /* slate-ish */
-  --line: #e5e7eb;       /* border */
-  --soft: #f8fafc;       /* bg chip */
-  --soft-2: #f1f5f9;     /* th bg */
-  --shadow: rgba(0,0,0,.04);
-
-  --landmark: #0ea5e9;   /* sky-500 */
-  --food: #f97316;       /* orange-500 */
-  --hotel: #22c55e;      /* green-500 */
-}
-
-/* Typography for print area */
-.print-sheet {
-  color: var(--ink);
-  font-family: 'Plus Jakarta Sans','Prompt', 'Noto Sans', sans-serif!important;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-/* Helpers to improve Thai word handling */
-.print-sheet,
-.print-sheet * {
-  word-break: normal !important;
-  overflow-wrap: break-word !important;
-  line-break: auto !important;
-  hyphens: none !important;
-  letter-spacing: 0 !important;
-  white-space: normal !important;
-  orphans: 3;
-  widows: 3;
-}
-
-/* ---------- Cover ---------- */
+/* Cover */
 .print-cover {
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: 16px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--line);
-}
-
-.cover-title {
-  margin: 0 0 4px 0;
-  font-size: 24px;
-  font-weight: 900;
-}
-.cover-sub {
-  margin: 0 0 10px 0;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-}
-.chip {
-  background: var(--soft);
-  border: 1px solid #eef2f7;
-  border-radius: 999px;
-  padding: 6px 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.chip-label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-.chip-value {
-  font-weight: 800;
-}
-
-/* Legend & note */
-.legend { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fff; box-shadow: 0 0.5pt 1pt var(--shadow); }
-.legend-title { font-size: 12px; font-weight: 800; margin-bottom: 6px; }
-.legend ul { margin: 0; padding-left: 16px; }
-.legend li { margin: 2px 0; }
-
-.note { margin-top: 10px; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; }
-.note-title { font-size: 12px; font-weight: 800; margin-bottom: 6px; }
-.note-body { color: var(--muted); }
-
-/* Dots */
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 6px; transform: translateY(-1px); }
-.dot-landmark { background: var(--landmark); }
-.dot-food { background: var(--food); }
-.dot-hotel { background: var(--hotel); }
-
-
-/* ---------- Day Section ---------- */
-.print-day { margin-top: 14px; page-break-inside: avoid; break-inside: avoid; }
-.day-ribbon {
-  display: inline-flex;
-  background: #ffffff;
-  border-left: 4px solid #64748b; /* slate-500 */
-  padding: 4px 10px;
-  border-radius: 6px;
-  margin: 0 0 6px 0;
-}
-.ribbon-text { font-size: 15px; font-weight: 900; }
-
-/* ---------- Table ---------- */
-.print-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  table-layout: fixed;
-  border: 1px solid var(--line);
-}
-.print-table thead { display: table-header-group; }
-.print-table tfoot { display: table-footer-group; }
-
-.print-table th,
-.print-table td {
-  border: 1px solid var(--line);
-  padding: 7px 8px;
-  vertical-align: top;
-}
-.print-table th {
-  text-align: left;
-  background: var(--soft-2);
-  font-weight: 900;
-}
-.print-table tbody tr:nth-child(odd) { background: #fafafa; }
-
-.time-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.place-cell { font-weight: 800; }
-
-.print-table tr { page-break-inside: avoid; break-inside: avoid; }
-
-/* Empty state */
-.empty-hint {
-  padding: 12px;
-  border: 1px dashed var(--line);
-  color: var(--muted);
-  border-radius: 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
   background: #fff;
 }
+.cover-title { margin: 0 0 4px; font-size: 30px; font-weight: 800; letter-spacing: -0.01em; }
+.cover-sub   { margin: 0 0 10px; color: #4a5568; font-size: 15px; font-weight: 600; }
+.chip-row    { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 999px; background: #f3f4f6; border: 1px solid #e5e7eb; font-weight: 600; }
+.chip-label { color: #6b7280; font-size: 11px; text-transform: uppercase; }
+.chip-value { color: #111; }
 
-/* ---------- Footer ---------- */
-.print-footer {
-  margin-top: 12px;
-  font-size: 11px;
-  color: #94a3b8;
-  text-align: right;
+.legend, .note { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #fff; }
+.legend-title, .note-title { margin: 0 0 6px; font-size: 13px; font-weight: 800; }
+.legend ul { margin: 0; padding-left: 18px; }
+.legend li { margin: 2px 0; }
+.note-body { color: #4a5568; }
+
+.dot { display:inline-block; width:8px; height:8px; border-radius:999px; margin-right:6px; transform: translateY(-1px); }
+.dot-landmark { background:#0a84ff; }
+.dot-food     { background:#ff9500; }
+.dot-hotel    { background:#34c759; }
+
+/* Day block */
+.print-day { padding: 12px 0; }
+.print-day + .print-day { margin-top: 10px; }
+.day-ribbon {
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 7px 12px; border-radius: 10px;
+  background:#fff; border:1px solid #e5e7eb; margin-bottom: 10px;
 }
+.ribbon-text { font-size: 16px; font-weight: 800; }
 
-/* ========== PRINT ONLY ========== */
+/* Table */
+.print-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14px;
+}
+.print-table thead { display: table-header-group; }
+.print-table th {
+  background: #f7f7fb;
+  color: #374151;
+  font-weight: 800;
+  text-align: left;
+  padding: 11px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.print-table td {
+  padding: 10px 12px;
+  vertical-align: top;
+  border-top: 1px solid #eef2f7;
+  color: #111;
+}
+.print-table tbody tr:nth-child(even) { background: #fbfcff; }
+.print-table th:nth-child(1), .print-table td:nth-child(1) { width: 22%; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.print-table th:nth-child(2), .print-table td:nth-child(2) { width: 32%; }
+
+/* ไม่มีตัวหนาในเนื้อหาตาราง */
+.print-table td,
+.print-table tbody td,
+.print-table .place-cell { font-weight: 400 !important; }
+.print-table td strong, .print-table td b { font-weight: 400 !important; }
+
+.empty-hint { padding: 12px; border: 1px dashed #e5e7eb; border-radius: 10px; background:#fff; color:#4a5568; }
+
+/* ================= Print ================= */
 @media print {
-  /* Hide app chrome */
   .no-print,
   .itin-details,
-  .app-header,
-  .global-header,
-  .site-header,
-  .ant-layout-header,
-  .ant-layout-sider,
-  .navbar,
-  .topbar,
-  header[role="banner"],
-  .itin-page-title,
-  .ant-tooltip,
-  .ant-popover {
-    display: none !important;
-  }
-
-  body, .ant-layout, .itin-container { background: #fff !important; }
-  .print-sheet { display: block !important; }
-
-  /* Page setup */
-  @page {
-    size: A4;
-    margin: 14mm 12mm;
-  }
+  .app-header, .global-header, .site-header,
+  .ant-layout-header, .ant-layout-sider,
+  .navbar, .topbar, header[role="banner"],
+  .itin-page-title, .ant-tooltip, .ant-popover,
+  .fab-print { display: none !important; }
 
   html, body {
+    background: #fff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .print-sheet { padding-bottom: 20mm; }
+  @page { size: A4; margin: 16mm 14mm; }
 
-  /* Footer fixed */
-  .print-footer {
-    position: fixed;
-    left: 12mm;
-    right: 12mm;
-    bottom: 8mm;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 0; padding: 0;
-    background: transparent;
-    border: 0;
-    z-index: 9999;
+  .print-sheet { display:block !important; margin:0 !important; }
+
+  /* ทำให้แต่ละ .print-page = 1 หน้า (ตัวคุมหลัก) */
+  .print-page { break-after: page; page-break-after: always; padding-top: 2mm; padding-bottom: 3mm; }
+  .print-page:last-child { break-after: auto; page-break-after: auto; }
+
+  /* ห่อหัววัน + ตารางไว้ด้วยกัน → ไม่แยกหน้า */
+  .day-block { break-inside: avoid-page; page-break-inside: avoid; }
+  .day-ribbon { break-after: avoid; page-break-after: avoid; }
+  .print-table { break-before: avoid-page; page-break-before: avoid; }
+
+  /* กันแถวตารางแตกหน้า */
+  .print-table,
+  .print-table thead,
+  .print-table tbody,
+  .print-table tr {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
   }
 
-  .day-ribbon { page-break-after: avoid; break-after: avoid; }
-}
-
-/* ---------- Float Print Button (screen only) ---------- */
-.fab-print {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.fab-print .ant-btn {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  width: 48px;
-  height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  /* กระชับเล็กน้อยให้ 2 วัน/หน้าได้ง่าย */
+  .print-sheet { font-size: 13.25px; line-height: 1.6; }
+  .print-day { padding: 4mm 0; }
+  .day-ribbon { margin-bottom: 4mm; }
+  .print-table th { padding: 8px 9px; }
+  .print-table td { padding: 7px 9px; }
 }
