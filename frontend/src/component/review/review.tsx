@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Rate, Input } from "antd";
-import "./review.css";          // มี .btn-secondary อยู่แล้วจากไฟล์หลักก็ได้
+import "./review.css";
 
 interface Props {
   open: boolean;
@@ -40,7 +40,11 @@ const RateReviewModal: React.FC<Props> = ({
   return (
     <Modal
       className="cupertino-review-modal"
-      title={tripName ? `ให้คะแนนทริป: ${tripName}${tripId ? ` (#${tripId})` : ""}` : "ให้คะแนนทริป"}
+      title={
+        tripName
+          ? `รีวิวทริป: ${tripName}${tripId ? ` (#${tripId})` : ""}`
+          : "รีวิวทริปของคุณ"
+      }
       open={open}
       onCancel={onCancel}
       footer={
@@ -50,7 +54,7 @@ const RateReviewModal: React.FC<Props> = ({
             className="btn-secondary compact"
             onClick={onCancel}
           >
-            ยกเลิก
+            ไว้ทีหลัง
           </button>
           <button
             type="button"
@@ -58,7 +62,7 @@ const RateReviewModal: React.FC<Props> = ({
             onClick={handleOk}
             disabled={rating < 1 || loading}
           >
-            {loading ? "กำลังส่ง…" : "ส่งคะแนน"}
+            {loading ? "กำลังส่งรีวิว…" : "ส่งรีวิว"}
           </button>
         </div>
       }
@@ -68,13 +72,13 @@ const RateReviewModal: React.FC<Props> = ({
     >
       <div className="crm-body center">
         <div className="crm-section">
-          <label className="crm-label">ให้ดาว</label>
+          <label className="crm-label">ให้คะแนนความประทับใจ</label>
           <Rate value={rating} onChange={setRating} className="crm-rate" />
-          <div className="crm-hint">แตะเพื่อเลือก 1–5 ดาว</div>
+          <div className="crm-hint">แตะเลือก 1–5 ดาว (5 = ประทับใจมาก)</div>
         </div>
 
         <div className="crm-section">
-          <label className="crm-label">รีวิว (ไม่บังคับ)</label>
+          <label className="crm-label">เล่าความประทับใจ (ไม่บังคับ)</label>
           <div className="crm-field crm-textarea">
             <Input.TextArea
               value={review}
@@ -82,7 +86,7 @@ const RateReviewModal: React.FC<Props> = ({
               rows={3}
               maxLength={1000}
               showCount
-              placeholder="เล่าสั้น ๆ ถึงสิ่งที่ชอบ หรืออยากให้ปรับปรุง…"
+              placeholder="บอกสั้น ๆ ว่าชอบอะไร หรืออยากให้เราปรับปรุงอะไรบ้าง"
             />
           </div>
         </div>

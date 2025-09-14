@@ -134,12 +134,34 @@ const TripItinerary: React.FC = () => {
   });
   const [isLogin, setIsLogin] = useState<boolean>(() => localStorage.getItem("isLogin") === "true");
 
-  const [tabKey, setTabKey] = useState<string>(() =>
-    localStorage.getItem("isLogin") === "true" ? "overview" : "itinerary"
-  );
+  // ===== Persisted Tabs =====
+  const TAB_STORAGE_KEY = "itin.activeTab";
+  const VALID_TABS = ["overview", "details"] as const;
+
+  const [tabKey, setTabKey] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("tab");
+    const stored = localStorage.getItem(TAB_STORAGE_KEY);
+    const fallback = localStorage.getItem("isLogin") === "true" ? "overview" : "details";
+    const candidate = q || stored || fallback;
+    return VALID_TABS.includes(candidate as any) ? candidate! : fallback;
+  });
+
+  // ถ้าสถานะล็อกอินเปลี่ยน แล้วแท็บปัจจุบันใช้ไม่ได้ ให้ปรับอัตโนมัติ
   useEffect(() => {
-    setTabKey(isLogin ? "overview" : "itinerary");
+    const allowed = isLogin ? VALID_TABS : ["details"];
+    if (!allowed.includes(tabKey as any)) setTabKey(allowed[0]);
   }, [isLogin]);
+
+  // เขียนสถานะแท็บกลับสู่ URL + localStorage ทุกครั้งที่เปลี่ยน
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", tabKey);
+    const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+    window.history.replaceState({}, "", newUrl);
+    localStorage.setItem(TAB_STORAGE_KEY, tabKey);
+  }, [tabKey]);
+
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -471,6 +493,12 @@ const TripItinerary: React.FC = () => {
       );
 
       await refreshAll(TripIDLS);
+
+      // ✅ รีเฟรชทั้งหน้าเมื่อบันทึกเสร็จ
+      setTimeout(() => {
+        window.location.reload();
+      }, 600);
+
     } catch (e: any) {
       msg.error(e?.message || "บันทึกไม่สำเร็จ");
     } finally {
@@ -478,6 +506,7 @@ const TripItinerary: React.FC = () => {
       endEditDay();
     }
   };
+
 
   // ===== Suggestions =====
   const getPrevNext = (day: number, index: number, record: ShortestpathInterface) => {

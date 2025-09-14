@@ -81,7 +81,7 @@
 }
 
 .itin-page-title {
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.015em;
   display: inline-block;
@@ -530,3 +530,125 @@
    ========================================================= */
 
    
+   /* =========================================================
+   REVIEW MODAL — formal, clean, modern
+   ========================================================= */
+.review-modal .ant-modal-content {
+  padding: 22px 24px 16px;
+}
+
+.review-modal .ant-modal-header {
+  border-bottom: 0;
+  padding: 8px 24px 0;
+}
+
+.review-modal .ant-modal-title {
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-size: 20px;
+  text-align: center;
+}
+
+.review-modal .ant-modal-body {
+  padding: 10px 24px 0;
+}
+
+/* โครงฟอร์ม */
+.review-modal .review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+/* กรอบฟิลด์แบบการ์ด */
+.review-modal .field {
+  background: var(--surface-alt);
+  border: 1px solid var(--divider);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 12px;
+}
+
+/* ป้ายกำกับ */
+.review-modal .label {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+/* ดาวให้คะแนน */
+.review-modal .ant-rate {
+  font-size: 26px;
+  color: var(--accent);
+}
+.review-modal .ant-rate-star:not(.ant-rate-star-full) {
+  opacity: .75;
+}
+
+/* ช่องข้อความ */
+.review-modal textarea.ant-input,
+.review-modal .ant-input-textarea textarea {
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  resize: vertical;
+}
+.review-modal textarea.ant-input:focus,
+.review-modal .ant-input-textarea textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+
+/* ข้อความช่วย/นับตัวอักษร */
+.review-modal .helper {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ปุ่มท้ายโมดอล */
+.review-modal .ant-modal-footer {
+  border-top: 0;
+  padding: 14px 24px 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.review-modal .ant-btn {
+  height: 38px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.review-modal .ant-btn-default {
+  background: var(--chip);
+  border-color: var(--divider);
+  color: var(--text);
+}
+.review-modal .ant-btn-default:hover {
+  background: var(--surface-alt);
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px var(--accent-06);
+}
+
+.review-modal .ant-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.review-modal .ant-btn-primary:hover {
+  filter: brightness(0.96);
+  box-shadow: 0 0 0 4px var(--accent-12);
+}
+
+/* โมบาย */
+@media (max-width: 576px) {
+  .review-modal .ant-modal-content { padding: 18px 16px 12px; }
+  .review-modal .ant-modal-body { padding: 8px 16px 0; }
+}

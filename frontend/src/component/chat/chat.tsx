@@ -28,7 +28,8 @@ import { useNavigate } from "react-router-dom";
 const LOCAL_GUEST_TRIP_PLAN_TEXT = "guest_trip_plan_text";
 const LOCAL_GUEST_ROUTE_DATA = "guest_route_data";
 const LOCAL_GUEST_ACTIVITIES = "guest_activities";
-const LOCAL_GUEST_META = "guest_meta"; // { keyword, days, budget, placeId, placeName, time }
+const LOCAL_GUEST_META = "guest_meta"; // { keyword, days, budget, placeId, placeName, time, guestCondition? }
+const LOCAL_GUEST_SHORTEST_PATHS = "guest_shortest_paths"; // เก็บ FromCode/ToCode สำหรับ guest
 
 // ===== util: ดึงรูปจากแลนด์มาร์ก =====
 const getPlaceImage = (p?: Partial<LandmarkInterface> | null) =>
@@ -38,13 +39,22 @@ const getPlaceImage = (p?: Partial<LandmarkInterface> | null) =>
   (p as any)?.Photos?.[0]?.Url ||
   "/images/place-placeholder.jpg";
 
+// ===== Types (ภายในไฟล์นี้)
+type GuestActivity = { day: number; startTime: string; endTime: string; description: string };
+type RouteData = {
+  start_name?: string;
+  accommodation?: { id?: string };
+  trip_plan_by_day?: Array<{ day: number; plan: Array<{ id: string }> }>;
+  paths?: Array<{ from: string; to: string; distance_km?: number }>;
+};
+
 // ฟังก์ชัน parse ข้อความแผนทริป LLM เป็น array กิจกรรม {day, startTime, endTime, description}
-function parseTripPlanTextToActivities(text: string) {
+function parseTripPlanTextToActivities(text: string): GuestActivity[] {
   const lines = text
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l !== "");
-  const activities: Array<{ day: number; startTime: string; endTime: string; description: string }> = [];
+  const activities: GuestActivity[] = [];
   let currentDay = 0;
 
   for (let i = 0; i < lines.length; i++) {
@@ -78,7 +88,7 @@ function parseTripPlanTextToActivities(text: string) {
       continue;
     }
 
-    // เคสพิเศษ: "20:00 เป็นต้นไป พักผ่อนที่ ..." → แปลงเป็น 20:00–21:00
+    // เคสพิเศษ: "20:00 ... " → แปลงเป็น 20:00–21:00
     const singleLineSpecial = line.match(/^(\d{2}:\d{2})\s+(.+)/);
     if (singleLineSpecial) {
       const [_, startTime, description] = singleLineSpecial as unknown as [string, string, string];
@@ -132,7 +142,102 @@ const formatTripPlanText = (text: string) => {
   });
 };
 
-// ===== saveTripCondition: guest จะไม่บันทึก =====
+// ===== reconstruct ShortestPaths (สำหรับ guest) จาก activities + routeData
+function reconstructGuestShortestPaths(
+  activities: GuestActivity[],
+  routeData: RouteData | null
+): Array<
+  Pick<
+    ShortestpathInterface,
+    "Day" | "PathIndex" | "FromCode" | "ToCode" | "Type" | "Distance" | "ActivityDescription" | "StartTime" | "EndTime"
+  >
+> {
+  if (!routeData) return [];
+  const accCode = routeData.accommodation?.id || "A1";
+  const sps: Array<
+    Pick<
+      ShortestpathInterface,
+      | "Day"
+      | "PathIndex"
+      | "FromCode"
+      | "ToCode"
+      | "Type"
+      | "Distance"
+      | "ActivityDescription"
+      | "StartTime"
+      | "EndTime"
+    >
+  > = [];
+  const dayPlanIndices: Record<number, number> = {};
+  let PathIndex = 1;
+
+  for (const act of activities) {
+    const dayPlan = routeData.trip_plan_by_day?.find((d) => d.day === act.day);
+    const currentIndex = dayPlanIndices[act.day] ?? 0;
+
+    let fromCode = "";
+    let toCode = "";
+
+    const isCheckIn = /เช็คอิน/.test(act.description);
+    const isCheckout = /เช็คเอาท์/.test(act.description);
+    const isRest = /พักผ่อน/.test(act.description);
+
+    if (isCheckIn) {
+      fromCode = accCode;
+      toCode = accCode;
+    } else if (isCheckout || isRest) {
+      if (dayPlan && dayPlan.plan && dayPlan.plan.length > 0) {
+        fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
+      } else {
+        fromCode = accCode;
+      }
+      toCode = accCode;
+    } else {
+      if (dayPlan && dayPlan.plan && dayPlan.plan.length > 0) {
+        if (currentIndex === 0) {
+          fromCode = accCode;
+          toCode = dayPlan.plan[0].id;
+        } else if (currentIndex > 0 && currentIndex < dayPlan.plan.length) {
+          fromCode = dayPlan.plan[currentIndex - 1].id;
+          toCode = dayPlan.plan[currentIndex].id;
+        } else {
+          fromCode = accCode;
+          toCode = accCode;
+        }
+      } else {
+        fromCode = accCode;
+        toCode = accCode;
+      }
+    }
+
+    const distance = routeData.paths?.find(
+      (p) => (p.from === fromCode && p.to === toCode) || (p.from === toCode && p.to === fromCode)
+    )?.distance_km;
+
+    sps.push({
+      Day: act.day,
+      PathIndex: PathIndex++,
+      FromCode: fromCode,
+      ToCode: toCode,
+      Type: "Activity",
+      Distance: typeof distance === "number" ? distance : 0,
+      ActivityDescription: act.description,
+      StartTime: act.startTime,
+      EndTime: act.endTime,
+    });
+
+    // เดิน pointer เฉพาะกิจกรรมปกติ
+    if (!isCheckIn && !isCheckout) {
+      if (dayPlan && currentIndex + 1 < (dayPlan.plan?.length || 0)) {
+        dayPlanIndices[act.day] = currentIndex + 1;
+      }
+    }
+  }
+
+  return sps;
+}
+
+// ===== saveTripCondition: guest จะไม่บันทึกลง backend ให้เก็บใน localStorage แทน =====
 const saveTripCondition = async (
   userId: number | null | undefined,
   tripDetails?: { day: string | number; price: number; accommodation: string; landmark: string; style: string }
@@ -147,13 +252,14 @@ const saveTripCondition = async (
       return;
     }
 
-    // ถ้า guest → ไม่เรียก API (เก็บได้ถ้าต้องการ)
+    // ถ้า guest → เก็บลง LOCAL_GUEST_META แบบ merge (อย่าทับ guestCondition เดิม)
     if (!userId) {
+      const prevMeta = JSON.parse(localStorage.getItem(LOCAL_GUEST_META) || "{}");
       localStorage.setItem(
         LOCAL_GUEST_META,
         JSON.stringify({
-          ...(JSON.parse(localStorage.getItem(LOCAL_GUEST_META) || "{}")),
-          guestCondition: tripDetails,
+          ...prevMeta,
+          guestCondition: tripDetails, // อัปเดต guestCondition ล่าสุด
         })
       );
       return;
@@ -176,7 +282,6 @@ const saveTripCondition = async (
 };
 
 // ====== Message Types ======
-// เพิ่ม budget-prompt และ budget-quickpick
 export type Msg =
   | { id: string; role: "ai" | "user"; text: string; isTripPlan?: false; kind?: "text" }
   | { id: string; role: "ai"; text: string; isTripPlan: true; kind?: "text" }
@@ -357,24 +462,24 @@ const TripChat = () => {
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text, kind: "text" }]);
 
   // ---------- Core: generateRouteAndPlan ----------
-  // เพิ่ม budget?: number
-  const generateRouteAndPlan = useCallback(
-    async (id: number, keyword: string, days: number, budget?: number) => {
-      try {
-        setLoading(true);
-        pushBot(
-          `กำลังสร้างแผนทริปสำหรับ "${keyword}" ${days} วัน${
-            budget ? ` ภายใต้งบ ~${budget.toLocaleString()} บาท` : ""
-          }...`
-        );
+// ---------- Core: generateRouteAndPlan ----------
+const generateRouteAndPlan = useCallback(
+  async (id: number, keyword: string, days: number, budget?: number) => {
+    try {
+      setLoading(true);
+      pushBot(
+        `กำลังสร้างแผนทริปสำหรับ "${keyword}" ${days} วัน${
+          budget ? ` ภายใต้งบ ~${budget.toLocaleString()} บาท` : ""
+        }...`
+      );
 
-        const routeData = await GetRouteFromAPI(id, days, budget);
+      const routeData: RouteData = await GetRouteFromAPI(id, days, budget);
 
-        const budgetText = budget
-          ? `\n- งบประมาณรวมสำหรับทั้งทริปไม่เกิน ~${budget.toLocaleString()} บาท (พยายามเลือกกิจกรรม/ร้านอาหารให้เหมาะกับงบ)\n`
-          : "";
+      const budgetText = budget
+        ? `\n- งบประมาณรวมสำหรับทั้งทริปไม่เกิน ~${budget.toLocaleString()} บาท (พยายามเลือกกิจกรรม/ร้านอาหารให้เหมาะกับงบ)\n`
+        : "";
 
-        const prompt = `
+      const prompt = `
 คุณคือผู้ช่วยวางแผนทริปท่องเที่ยวมืออาชีพ โปรดจัดแผนการเดินทางในกรุงเทพฯ เป็นเวลา ${days} วัน โดยเริ่มจาก "${routeData.start_name}"
 
 ด้านล่างคือข้อมูลเส้นทางระหว่างสถานที่ (paths) และแผนรายวัน (trip_plan):
@@ -400,171 +505,201 @@ ${JSON.stringify(routeData.trip_plan_by_day, null, 2)}
 ${budgetText}
 `;
 
-        const groqRes = await PostGroq(prompt);
-        const tripPlanText = groqRes?.choices?.[0]?.message?.content?.trim();
-        if (!tripPlanText) {
-          pushBot("ขออภัย เกิดข้อผิดพลาดระหว่างการสร้างแผนทริป กรุณาลองใหม่ภายหลัง");
-          return;
-        }
+      const groqRes = await PostGroq(prompt);
+      const tripPlanText = groqRes?.choices?.[0]?.message?.content?.trim();
+      if (!tripPlanText) {
+        pushBot("ขออภัย เกิดข้อผิดพลาดระหว่างการสร้างแผนทริป กรุณาลองใหม่ภายหลัง");
+        return;
+      }
 
-        // แสดงแผนแบบจัดรูป (formatTripPlanText)
-        pushBot(tripPlanText, true);
+      // แสดงแผนแบบจัดรูป (formatTripPlanText)
+      pushBot(tripPlanText, true);
 
-        // ====== โหมดพรีวิว: ไม่บันทึกอะไรลงระบบ ======
-        if (isPreviewOnly) {
-          const activities = parseTripPlanTextToActivities(tripPlanText || "");
-          // เก็บทุกอย่างไว้ให้หน้า Preview
-          localStorage.setItem(LOCAL_GUEST_TRIP_PLAN_TEXT, tripPlanText);
-          localStorage.setItem(LOCAL_GUEST_ROUTE_DATA, JSON.stringify(routeData));
-          localStorage.setItem(LOCAL_GUEST_ACTIVITIES, JSON.stringify(activities));
-          localStorage.setItem(
-            LOCAL_GUEST_META,
-            JSON.stringify({
-              keyword,
-              days,
-              budget: budget ?? null,
-              placeId: id,
-              placeName: selectedPlace?.Name ?? keyword,
-              time: new Date().toISOString(),
-            })
-          );
-          // ไปหน้า Preview
-          navigate("/guest/preview");
-          return;
-        }
-
-        // ====== โหมดล็อกอิน: ทำ flow บันทึกเดิม ======
-        const conditionPayload = {
-          User_id: userIdNum as number,
-          Day: days.toString(),
-          Price: budget ?? 5000,
-          Accommodation: "โรงแรม",
-          Landmark: keyword,
-          Style: "ชิวๆ",
-        };
-
-        let conIdFromCreate = 1; // fallback
-        try {
-          const conRes = await CreateCondition(conditionPayload);
-          if (conRes?.ID) conIdFromCreate = conRes.ID;
-        } catch (err) {
-          console.error("[Condition] create failed, using default Con_id=1", err);
-        }
-
-        // CreateTrip
-        const accIdStr = routeData.accommodation?.id ?? "";
-        const accIdNum = parseInt(accIdStr.replace(/[^\d]/g, ""), 10);
-
-        const newTrip: TripInterface = {
-          Name: keyword,
-          Types: "custom",
-          Days: days,
-          Con_id: conIdFromCreate,
-          Acc_id: accIdNum,
-        };
-
-        const savedTrip = await CreateTrip(newTrip);
-        localStorage.setItem("TripID", savedTrip.ID!.toString());
-
-        // Save shortest paths
+      // ====== โหมดพรีวิว: เก็บทุกอย่างลง localStorage ======
+      if (isPreviewOnly) {
         const activities = parseTripPlanTextToActivities(tripPlanText || "");
-        let PathIndex = 1;
-        const dayPlanIndices: { [day: number]: number } = {};
 
-        for (const act of activities) {
-          if (!routeData.trip_plan_by_day || !Array.isArray(routeData.trip_plan_by_day)) {
-            console.error("routeData.trip_plan_by_day is missing or not an array:", routeData.trip_plan_by_day);
-            pushBot("เกิดข้อผิดพลาดในการดึงข้อมูลแผนทริป กรุณาลองใหม่");
-            return;
-          }
+        // 1) เก็บข้อความแผน + route + activities
+        localStorage.setItem(LOCAL_GUEST_TRIP_PLAN_TEXT, tripPlanText);
+        localStorage.setItem(LOCAL_GUEST_ROUTE_DATA, JSON.stringify(routeData));
+        localStorage.setItem(LOCAL_GUEST_ACTIVITIES, JSON.stringify(activities));
 
-          const dayPlan = routeData.trip_plan_by_day.find((d: { day: number }) => d.day === act.day);
-          if (!dayPlan) {
-            console.warn(`ไม่พบแผนสำหรับวัน ${act.day}`);
-            continue;
-          }
+        // 2) คำนวณ shortest paths (มี FromCode/ToCode) แล้วเก็บไว้ให้ด้วย
+        const guestSPs = reconstructGuestShortestPaths(activities, routeData);
+        localStorage.setItem(LOCAL_GUEST_SHORTEST_PATHS, JSON.stringify(guestSPs));
 
-          const accommodationCode = routeData.accommodation?.id || "A1";
-          const currentIndex = dayPlanIndices[act.day] ?? 0;
+        // 3) อัปเดต META แบบ merge
+        const prevMeta = JSON.parse(localStorage.getItem(LOCAL_GUEST_META) || "{}");
+        const mergedMeta = {
+          ...prevMeta,
+          keyword,
+          days,
+          budget: budget ?? prevMeta?.budget ?? null,
+          placeId: id,
+          placeName: selectedPlace?.Name ?? keyword,
+          time: new Date().toISOString(),
+          guestCondition:
+            prevMeta?.guestCondition ??
+            (typeof days === "number" && days > 0
+              ? {
+                  day: days.toString(),
+                  price: budget ?? selectedBudget ?? 0,
+                  accommodation: "โรงแรม",
+                  landmark: selectedPlace?.Name || keyword,
+                  style: "ชิวๆ",
+                }
+              : undefined),
+        };
+        localStorage.setItem(LOCAL_GUEST_META, JSON.stringify(mergedMeta));
 
-          let fromCode = "";
-          let toCode = "";
+        navigate("/guest/preview");
+        return;
+      }
 
-          if (/เช็คอิน/.test(act.description)) {
-            fromCode = accommodationCode;
-            toCode = accommodationCode;
-          } else if (/เช็คเอาท์/.test(act.description)) {
-            if (dayPlan.plan && dayPlan.plan.length > 0) {
-              fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
-            } else {
-              fromCode = accommodationCode;
-            }
-            toCode = accommodationCode;
-          } else if (/พักผ่อน/.test(act.description)) {
-            if (dayPlan.plan && dayPlan.plan.length > 0) {
-              fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
-            } else {
-              fromCode = accommodationCode;
-            }
-            toCode = accommodationCode;
+      // ====== โหมดล็อกอิน: ทำ flow บันทึกเดิม ======
+      const conditionPayload = {
+        User_id: userIdNum as number,
+        Day: days.toString(),
+        Price: budget ?? 5000,
+        Accommodation: "โรงแรม",
+        Landmark: keyword,
+        Style: "ชิวๆ",
+      };
+
+      let conIdFromCreate = 1; // fallback
+      try {
+        const conRes = await CreateCondition(conditionPayload);
+        if (conRes?.ID) conIdFromCreate = conRes.ID;
+      } catch (err) {
+        console.error("[Condition] create failed, using default Con_id=1", err);
+      }
+
+      // CreateTrip
+      const accIdStr = routeData.accommodation?.id ?? "";
+      const accIdNum = parseInt(accIdStr.replace(/[^\d]/g, ""), 10);
+
+      const newTrip: TripInterface = {
+        Name: keyword,
+        Types: "custom",
+        Days: days,
+        Con_id: conIdFromCreate,
+        Acc_id: accIdNum,
+      };
+
+      const savedTrip = await CreateTrip(newTrip);
+      localStorage.setItem("TripID", savedTrip.ID!.toString());
+      // แจ้ง component อื่น ๆ ที่ฟัง event นี้อยู่ (ถ้ามี)
+      try { window.dispatchEvent(new Event("TripIDChanged")); } catch {}
+
+      // Save shortest paths
+      const activities = parseTripPlanTextToActivities(tripPlanText || "");
+      let PathIndex = 1;
+      const dayPlanIndices: { [day: number]: number } = {};
+
+      for (const act of activities) {
+        if (!routeData.trip_plan_by_day || !Array.isArray(routeData.trip_plan_by_day)) {
+          console.error("routeData.trip_plan_by_day is missing or not an array:", routeData.trip_plan_by_day);
+          pushBot("เกิดข้อผิดพลาดในการดึงข้อมูลแผนทริป กรุณาลองใหม่");
+          return;
+        }
+
+        const dayPlan = routeData.trip_plan_by_day.find((d: { day: number }) => d.day === act.day);
+        if (!dayPlan) {
+          console.warn(`ไม่พบแผนสำหรับวัน ${act.day}`);
+          continue;
+        }
+
+        const accommodationCode = routeData.accommodation?.id || "A1";
+        const currentIndex = dayPlanIndices[act.day] ?? 0;
+
+        let fromCode = "";
+        let toCode = "";
+
+        if (/เช็คอิน/.test(act.description)) {
+          fromCode = accommodationCode;
+          toCode = accommodationCode;
+        } else if (/เช็คเอาท์/.test(act.description)) {
+          if (dayPlan.plan && dayPlan.plan.length > 0) {
+            fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
           } else {
-            if (dayPlan.plan && dayPlan.plan.length > 0) {
-              if (currentIndex === 0) {
-                fromCode = accommodationCode;
-                toCode = dayPlan.plan[0].id;
-              } else if (currentIndex > 0 && currentIndex < dayPlan.plan.length) {
-                fromCode = dayPlan.plan[currentIndex - 1].id;
-                toCode = dayPlan.plan[currentIndex].id;
-              } else {
-                fromCode = accommodationCode;
-                toCode = accommodationCode;
-              }
+            fromCode = accommodationCode;
+          }
+          toCode = accommodationCode;
+        } else if (/พักผ่อน/.test(act.description)) {
+          if (dayPlan.plan && dayPlan.plan.length > 0) {
+            fromCode = dayPlan.plan[dayPlan.plan.length - 1].id;
+          } else {
+            fromCode = accommodationCode;
+          }
+          toCode = accommodationCode;
+        } else {
+          if (dayPlan.plan && dayPlan.plan.length > 0) {
+            if (currentIndex === 0) {
+              fromCode = accommodationCode;
+              toCode = dayPlan.plan[0].id;
+            } else if (currentIndex > 0 && currentIndex < dayPlan.plan.length) {
+              fromCode = dayPlan.plan[currentIndex - 1].id;
+              toCode = dayPlan.plan[currentIndex].id;
             } else {
               fromCode = accommodationCode;
               toCode = accommodationCode;
             }
-          }
-
-          const path = routeData.paths.find(
-            (p: { from: string; to: string }) =>
-              (p.from === fromCode && p.to === toCode) || (p.from === toCode && p.to === fromCode)
-          );
-          const distance = path ? path.distance_km : 0;
-
-          const shortestPathData: ShortestpathInterface = {
-            TripID: savedTrip.ID,
-            Day: act.day,
-            PathIndex: PathIndex++,
-            FromCode: fromCode,
-            ToCode: toCode,
-            Type: "Activity",
-            Distance: parseFloat(distance.toString()),
-            ActivityDescription: act.description,
-            StartTime: act.startTime,
-            EndTime: act.endTime,
-          };
-
-          try {
-            await CreateShortestPath(shortestPathData);
-          } catch (e) {
-            console.error("Save shortest-path failed:", e);
-          }
-
-          if (!/เช็คอิน|เช็คเอาท์/.test(act.description)) {
-            if (currentIndex + 1 < (dayPlan.plan?.length || 0)) {
-              dayPlanIndices[act.day] = currentIndex + 1;
-            }
+          } else {
+            fromCode = accommodationCode;
+            toCode = accommodationCode;
           }
         }
-      } catch (error) {
-        console.error("Error generating route or calling Groq", error);
-        pushBot("ขออภัย เกิดข้อผิดพลาดระหว่างการสร้างแผนทริป กรุณาลองใหม่ภายหลัง");
-      } finally {
-        setLoading(false);
+
+        const path = routeData.paths?.find(
+          (p: { from: string; to: string }) =>
+            (p.from === fromCode && p.to === toCode) || (p.from === toCode && p.to === fromCode)
+        );
+        const distance = path ? path.distance_km ?? 0 : 0;
+
+        const shortestPathData: ShortestpathInterface = {
+          TripID: savedTrip.ID,
+          Day: act.day,
+          PathIndex: PathIndex++,
+          FromCode: fromCode,
+          ToCode: toCode,
+          Type: "Activity",
+          Distance: parseFloat(distance.toString()),
+          ActivityDescription: act.description,
+          StartTime: act.startTime,
+          EndTime: act.endTime,
+        };
+
+        try {
+          await CreateShortestPath(shortestPathData);
+        } catch (e) {
+          console.error("Save shortest-path failed:", e);
+        }
+
+        if (!/เช็คอิน|เช็คเอาท์/.test(act.description)) {
+          if (currentIndex + 1 < (dayPlan.plan?.length || 0)) {
+            dayPlanIndices[act.day] = currentIndex + 1;
+          }
+        }
       }
-    },
-    [isPreviewOnly, navigate, selectedPlace?.Name, userIdNum]
-  );
+
+      // ✅ เพิ่มตรงนี้: โหมดล็อกอินเสร็จทั้งหมดแล้ว ดีเลย์ 5 วิแล้วไปหน้า itinerary
+      pushBot("บันทึกทริปเรียบร้อยแล้ว กำลังพาไปหน้า Itinerary ใน 5 วินาที...");
+      setTimeout(() => {
+        try {
+          navigate("/itinerary");
+        } catch {}
+      }, 5000);
+
+    } catch (error) {
+      console.error("Error generating route or calling Groq", error);
+      pushBot("ขออภัย เกิดข้อผิดพลาดระหว่างการสร้างแผนทริป กรุณาลองใหม่ภายหลัง");
+    } finally {
+      setLoading(false);
+    }
+  },
+  [isPreviewOnly, navigate, selectedPlace?.Name, userIdNum, selectedBudget]
+);
+
 
   // คลิก quick-pick วัน
   const handlePickDays = useCallback(
@@ -1111,7 +1246,7 @@ ${landmarkNames}
                     className="trip-chat-avatar"
                     style={{
                       backgroundImage:
-                        'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIjnYTrzokvvU5de3TEWGfw-agnUCZ2-VIE54Pb0F4q-QwJA5mEvlXu2ErhvgtLN9t4Un4HopdtVlw_TWXw0tdOOiqJ6uqBstG3CvtddEwjWLkxiMCwl8jo6872bXiBeMf1kZZYRC4uS-ZSUCFз...")',
+                        'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBIjnYTrzokvvU5de3TEWGfw-agnUCZ2-VIE54Pb0F4q-QwJA5mEvlXu2ErhvgtLN9t4Un4HopdtVlw_TWXw0tdOOiqJ6uqBstG3CvtddEwjWLkxiMCwl8jo6872bXiBeMf1kZZYRC4uS-ZSUCFz65eRaCMtiZ-zPN891z-ggZxtauPNeo2938BZmwJnYZ-Jgc-9HI5SJeQeR3rrAPE713E61VFK8y0sFN038hCtInQYQt1GmEYxyDaR8YmSlUlIOsp9lP9-FYZODE")',
                     }}
                   />
                 )}

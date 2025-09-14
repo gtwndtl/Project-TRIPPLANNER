@@ -5,6 +5,8 @@ import {
   HomeOutlined,
   RestOutlined,
   PrinterOutlined,
+  WalletOutlined,
+  CompassOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +16,7 @@ import { Button, Empty, Spin, message, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 
 import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
+import MapRoute from "../map-route/map-route";
 
 // ===== LocalStorage keys from guest mode =====
 const LOCAL_GUEST_TRIP_PLAN_TEXT = "guest_trip_plan_text";
@@ -39,8 +42,9 @@ const ItemIcon: React.FC<{ code?: string }> = ({ code }) => {
 
 const SummaryIcon: React.FC<{ name: "calendar" | "pin" | "compass" | "wallet" }> = ({ name }) => {
   if (name === "calendar") return <CalendarOutlined className="icon" />;
-  if (name === "compass") return <EnvironmentOutlined className="icon" />;
-  if (name === "wallet") return <CalendarOutlined className="icon" />;
+  if (name === "compass") return <CompassOutlined className="icon" />;
+  if (name === "wallet") return <WalletOutlined className="icon" />;
+  // pin:
   return <EnvironmentOutlined className="icon" />;
 };
 
@@ -65,6 +69,7 @@ type GuestMeta = {
   placeId?: number;
   placeName?: string;
   time?: string;
+  budget?: number | string; // 🔧 รองรับ budget ระดับบน
   guestCondition?: {
     day: string | number;
     price: number;
@@ -169,7 +174,7 @@ const GuestTripPreview: React.FC = () => {
     try {
       return JSON.parse(localStorage.getItem(LOCAL_GUEST_META) || "{}");
     } catch {
-      return {};
+      return {} as GuestMeta;
     }
   }, []);
 
@@ -245,6 +250,14 @@ const GuestTripPreview: React.FC = () => {
     window.print();
   }, []);
 
+  // 🔧 แสดงงบประมาณ: ใช้ guestCondition.price ถ้ามี ไม่งั้น fallback ไป meta.budget
+  const showBudget = useMemo(() => {
+    const b = meta?.guestCondition?.price ?? meta?.budget;
+    if (typeof b === "number") return `${b.toLocaleString("th-TH")} บาท`;
+    if (typeof b === "string" && b.trim() !== "") return b;
+    return "—";
+  }, [meta]);
+
   // simulate loading to keep UX consistent with original page
   useEffect(() => {
     // ถ้าไม่มีข้อมูล guest ใดๆ ให้แจ้งและพากลับหน้า chat
@@ -255,6 +268,16 @@ const GuestTripPreview: React.FC = () => {
     }
     setLoading(false);
   }, [activities.length, msg, navigate, routeData, tripPlanText]);
+
+  // สไตล์การ์ด map ภายใน aside
+  const mapCardStyle: React.CSSProperties = {
+    margin: "10px 12px 12px",
+    background: "var(--surface)",
+    border: "1px solid var(--divider)",
+    borderRadius: "var(--radius)",
+    boxShadow: "var(--shadow-sm)",
+    padding: "8px 10px 12px",
+  };
 
   return (
     <div className="itin-root">
@@ -276,7 +299,7 @@ const GuestTripPreview: React.FC = () => {
               { icon: "calendar" as const, title: pseudoTrip?.Days ? `${pseudoTrip.Days} วัน` : "—", subtitle: "ระยะเวลา" },
               { icon: "pin" as const, title: pseudoTrip?.Name || "—", subtitle: "ปลายทาง" },
               { icon: "compass" as const, title: meta?.guestCondition?.style ?? "—", subtitle: "สไตล์" },
-              { icon: "wallet" as const, title: meta?.guestCondition?.price ?? "—", subtitle: "งบประมาณ" },
+              { icon: "wallet" as const, title: showBudget, subtitle: "งบประมาณ" }, // 🔧 ใช้ showBudget
             ].map((s, i) => (
               <div className="itin-cardrow" key={i}>
                 <div className="itin-cardrow-icon">
@@ -288,6 +311,9 @@ const GuestTripPreview: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+          <div className="no-print" style={mapCardStyle}>
+            <MapRoute />
           </div>
         </aside>
 
@@ -355,10 +381,10 @@ const GuestTripPreview: React.FC = () => {
               condition={
                 meta?.guestCondition
                   ? {
-                      ...meta.guestCondition,
-                      Price: meta.guestCondition.price,
-                      Style: meta.guestCondition.style,
-                    }
+                    ...meta.guestCondition,
+                    Price: meta.guestCondition.price,
+                    Style: meta.guestCondition.style,
+                  }
                   : null
               }
               groupedByDay={groupedByDay}
