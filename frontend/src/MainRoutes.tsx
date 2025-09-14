@@ -13,6 +13,8 @@ import AuthLayout from "./layout/AuthLayout";
 import TripItineraryRecommend from "./page/itinerary-recommend/itinerary-recommend";
 import TripExplore from "./page/trip-explore/trip-explore";
 import GuestTripPreview from "./component/guest-preview.tsx/guest-preview";
+import MapRoute from "./component/map-route/map-route";
+
 
 const router = createBrowserRouter([
   {
@@ -25,6 +27,7 @@ const router = createBrowserRouter([
       { path: "/itinerary/recommend/:tripId", element: <TripItineraryRecommend /> },
       { path: "/itinerary/explore", element: <TripExplore /> },
       { path: "/guest/preview", element: <GuestTripPreview  /> },
+      { path: "/test", element: <MapRoute  /> },
     ],
   },
   {

@@ -24,6 +24,7 @@ import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 
 import "./itinerary-print.css";
 import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
+import MapRoute from "../../component/map-route/map-route";
 
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
 
@@ -58,23 +59,27 @@ const TripItineraryRecommend: React.FC = () => {
   const [condition, setCondition] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // ==== Refs สำหรับเลื่อนขึ้นบนสุดใน container ที่สกอร์ลจริง ====
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const scrollTopNow = useCallback(() => {
-    // เลื่อนกล่องเนื้อหา (ถ้าเป็นตัวที่มี overflow)
     contentRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    // เลื่อน container (กันกรณีสกอร์ลที่ตัวนี้)
     containerRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    // เลื่อนทั้งเอกสาร (สำรองให้ครบทุก browser)
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     document.scrollingElement?.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    (document.documentElement as any).scrollTop = 0;
+    (document.body as any).scrollTop = 0;
   }, []);
 
-  // ตรวจว่าทริปนี้มีรีวิวไหม ไม่มีกลับ trip-chat
+  // ให้ MapRoute อ่าน TripID จาก localStorage ได้ตรงตาม URL เสมอ
+  useEffect(() => {
+    if (Number.isFinite(activeTripId) && activeTripId > 0) {
+      localStorage.setItem("TripID", String(activeTripId));
+      window.dispatchEvent(new Event("TripIDChanged"));
+    }
+  }, [activeTripId]);
+
+  // ถ้าไม่มีรีวิว -> กลับ trip-chat
   useEffect(() => {
     const checkReview = async () => {
       try {
@@ -121,7 +126,6 @@ const TripItineraryRecommend: React.FC = () => {
     void refreshTrip(activeTripId);
   }, [activeTripId, refreshTrip, msg]);
 
-  // เข้าหน้านี้: ปิด scroll restoration ของ browser แล้วเลื่อนขึ้นบนสุด
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
       const prev = window.history.scrollRestoration as ScrollRestoration;
@@ -134,12 +138,10 @@ const TripItineraryRecommend: React.FC = () => {
     scrollTopNow();
   }, [scrollTopNow]);
 
-  // เปลี่ยน tripId: เลื่อนขึ้นบนสุดหลัง DOM วาด
   useEffect(() => {
     requestAnimationFrame(scrollTopNow);
   }, [activeTripId, scrollTopNow]);
 
-  // หลังดึงทริปเสร็จ (เนื้อหาสูงขึ้น): เลื่อนขึ้นบนสุดอีกครั้งให้ชัวร์
   useEffect(() => {
     if (trip) requestAnimationFrame(scrollTopNow);
   }, [trip, scrollTopNow]);
@@ -174,11 +176,23 @@ const TripItineraryRecommend: React.FC = () => {
     window.print();
   }, []);
 
+  // สไตล์การ์ด map ภายใน aside
+  const mapCardStyle: React.CSSProperties = {
+    margin: "10px 12px 12px",
+    background: "var(--surface)",
+    border: "1px solid var(--divider)",
+    borderRadius: "var(--radius)",
+    boxShadow: "var(--shadow-sm)",
+    padding: "8px 10px 12px",
+  };
+
   return (
     <div className="itin-root">
       {contextHolder}
       <div className="itin-container" ref={containerRef}>
+        {/* ===== LEFT: SUMMARY + MAP (อยู่ใน aside เดียวกัน) ===== */}
         <aside className="itin-summary">
+          {/* Summary card (บน) */}
           <div
             className="itin-title-row"
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
@@ -206,8 +220,14 @@ const TripItineraryRecommend: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* Map card (ล่าง) */}
+          <div className="no-print" style={mapCardStyle}>
+            <MapRoute/>
+          </div>
         </aside>
 
+        {/* ===== RIGHT: CONTENT ===== */}
         <main className="itin-content" ref={contentRef}>
           {loading && (
             <div className="itin-loading">

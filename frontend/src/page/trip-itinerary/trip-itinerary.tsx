@@ -17,7 +17,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import "./trip-itinerary.css";
-
+import MapRoute from "../../component/map-route/map-route";
 import {
   GetTripById,
   GetLandmarksAndRestuarantforEdit,
@@ -44,6 +44,17 @@ import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-p
 
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
 const SP_TABLE_NAME = "shortestpaths";
+
+// สไตล์การ์ด map ภายใน aside
+const mapCardStyle: React.CSSProperties = {
+  margin: "10px 12px 12px",
+  background: "var(--surface)",
+  border: "1px solid var(--divider)",
+  borderRadius: "var(--radius)",
+  boxShadow: "var(--shadow-sm)",
+  padding: "8px 10px 12px",
+};
+
 
 // ===== Utils =====
 const deepClone = <T,>(obj: T): T => {
@@ -652,9 +663,9 @@ const TripItinerary: React.FC = () => {
 
   const groupedCodes = useMemo(
     () =>
-      (Object.values(groupedByDay)
-        .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
-        .filter(Boolean) as string[]),
+    (Object.values(groupedByDay)
+      .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
+      .filter(Boolean) as string[]),
     [groupedByDay]
   );
 
@@ -684,66 +695,66 @@ const TripItinerary: React.FC = () => {
               items={[
                 ...(isLogin
                   ? [
-                      {
-                        key: "overview",
-                        label: "Overview",
-                        children: (
-                          <>
-                            {trips.length > 0 ? (
-                              trips.map((t, idx) => {
-                                const idNum = Number(t.ID);
-                                const isActive = idNum === Number(activeTripId);
-                                const hasReviewed = reviewedTripIds.has(idNum);
-                                return (
-                                  <div key={t.ID ?? idx}>
-                                    <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
-                                      <div className="itin-cardrow-text">
-                                        <p
-                                          className="title"
-                                          style={{ cursor: "pointer" }}
-                                          onClick={() => switchTripWithGuard(idNum)}
-                                        >
-                                          {idx + 1} - {t.Name}
-                                        </p>
-                                      </div>
-                                      <div className="itin-cardrow-right">
-                                        {!hasReviewed && (
-                                          <Tooltip title="ให้คะแนนทริป">
-                                            <button
-                                              type="button"
-                                              className="btn-icon rate"
-                                              aria-label="Rate trip"
-                                              onClick={() => {
-                                                if (!isActive) switchTripWithGuard(idNum);
-                                                openRateModal();
-                                              }}
-                                            >
-                                              <StarFilled />
-                                            </button>
-                                          </Tooltip>
-                                        )}
-                                        <Tooltip title="ลบ">
+                    {
+                      key: "overview",
+                      label: "Overview",
+                      children: (
+                        <>
+                          {trips.length > 0 ? (
+                            trips.map((t, idx) => {
+                              const idNum = Number(t.ID);
+                              const isActive = idNum === Number(activeTripId);
+                              const hasReviewed = reviewedTripIds.has(idNum);
+                              return (
+                                <div key={t.ID ?? idx}>
+                                  <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
+                                    <div className="itin-cardrow-text">
+                                      <p
+                                        className="title"
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() => switchTripWithGuard(idNum)}
+                                      >
+                                        {idx + 1} - {t.Name}
+                                      </p>
+                                    </div>
+                                    <div className="itin-cardrow-right">
+                                      {!hasReviewed && (
+                                        <Tooltip title="ให้คะแนนทริป">
                                           <button
                                             type="button"
-                                            className="btn-icon danger"
-                                            aria-label="Delete trip"
-                                            onClick={() => confirmDeleteTrip(t)}
+                                            className="btn-icon rate"
+                                            aria-label="Rate trip"
+                                            onClick={() => {
+                                              if (!isActive) switchTripWithGuard(idNum);
+                                              openRateModal();
+                                            }}
                                           >
-                                            <DeleteOutlined />
+                                            <StarFilled />
                                           </button>
                                         </Tooltip>
-                                      </div>
+                                      )}
+                                      <Tooltip title="ลบ">
+                                        <button
+                                          type="button"
+                                          className="btn-icon danger"
+                                          aria-label="Delete trip"
+                                          onClick={() => confirmDeleteTrip(t)}
+                                        >
+                                          <DeleteOutlined />
+                                        </button>
+                                      </Tooltip>
                                     </div>
                                   </div>
-                                );
-                              })
-                            ) : (
-                              <p>No trips found.</p>
-                            )}
-                          </>
-                        ),
-                      } as const,
-                    ]
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p>No trips found.</p>
+                          )}
+                        </>
+                      ),
+                    } as const,
+                  ]
                   : []),
                 {
                   key: "details",
@@ -761,6 +772,9 @@ const TripItinerary: React.FC = () => {
                           </div>
                         </div>
                       ))}
+                      <div className="no-print" style={mapCardStyle}>
+                        <MapRoute />
+                      </div>
                     </>
                   ),
                 } as const,
