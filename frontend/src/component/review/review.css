@@ -1,134 +1,253 @@
-/* =========================================================
-   Review Modal — Itinerary theme match
-   ใช้กับ .cupertino-review-modal เดิมได้ทันที
-   ========================================================= */
-.cupertino-review-modal {
-  font-family: system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+/* review-trip.css */
+
+/* Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0");
+
+/* Material Symbols base */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 32px; /* เทียบเท่า text-4xl */
+  line-height: 1;
+  display: inline-block;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
-/* กล่องโมดอล: ผิว/เส้น/เงาให้เหมือนการ์ดในหน้า Itinerary */
-.cupertino-review-modal .ant-modal-content {
-  background: var(--surface);
-  border: 1px solid var(--divider);
-  border-radius: calc(var(--radius) + 4px);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
+/* Theme tokens (ดึงจากไฟล์เดิม) */
+:root {
+  --primary-50: #f0f9ff;
+  --primary-100: #e0f2fe;
+  --primary-200: #bae6fd;
+  --primary-300: #7dd3fc;
+  --primary-400: #38bdf8;
+  --primary-500: #0ea5e9;
+  --primary-600: #0284c7;
+  --primary-700: #0369a1;
+  --primary-800: #075985;
+  --primary-900: #0c4a6e;
+
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+
+  --yellow-400: #facc15;
+
+  --radius-xl: 12px;
+  --shadow-md: 0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* Header: เรียบ สะอาด */
-.cupertino-review-modal .ant-modal-header {
-  background: transparent;
-  border-bottom: 1px solid var(--divider);
-  padding: 14px 16px 10px;
+/* Page */
+body {
+  font-family: "Plus Jakarta Sans", "Noto Sans", sans-serif;
 }
-.cupertino-review-modal .ant-modal-title {
+
+.review-root {
+  background: var(--gray-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card */
+.review-card {
   width: 100%;
-  display: grid;
-  place-items: center;
-}
-.crm-title {
-  display: grid;
-  gap: 4px;
-  text-align: center;
-}
-.crm-title-text {
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: -0.015em;
-  color: var(--text);
-}
-.crm-subtitle {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-/* ปุ่มปิด */
-.cupertino-review-modal .ant-modal-close { top: 10px; right: 12px; }
-.cupertino-review-modal .ant-modal-close-x {
-  width: 32px; height: 32px; border-radius: 8px;
-  transition: background .18s ease;
-}
-.cupertino-review-modal .ant-modal-close:hover { background: var(--chip); }
-
-/* Body: กระชับ โฟกัสสิ่งที่ต้องทำ */
-.cupertino-review-modal .ant-modal-body { padding: 14px 16px; }
-.crm-body { display: grid; gap: 12px; justify-items: center; }
-.crm-section { width: 100%; max-width: 560px; display: grid; gap: 6px; justify-items: center; }
-.crm-label { font-size: 14px; font-weight: 700; color: var(--text); }
-
-/* ดาว: ใช้ accent เดียวกับเว็บ */
-.crm-rate { font-size: 26px; color: var(--accent); }
-.crm-rate .ant-rate-star { transition: transform .08s ease; }
-.crm-rate .ant-rate-star:hover { transform: translateY(-1px) scale(1.03); }
-.crm-hint { font-size: 12.5px; color: var(--muted); }
-
-/* TextArea: ผิว chip + เส้น divider + วงแหวน focus สี accent */
-.crm-field { width: 100%; max-width: 560px; }
-.crm-textarea .ant-input,
-.crm-textarea textarea.ant-input {
-  background: var(--chip);
-  border: 1px solid var(--divider);
-  border-radius: 12px;
-  color: var(--text);
-  padding: 10px 12px;
-  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.crm-textarea .ant-input::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
-.crm-textarea .ant-input:focus,
-.crm-textarea textarea.ant-input:focus {
+  max-width: 640px;
   background: #fff;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 6px var(--accent-06);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
 }
 
-/* Footer: เส้นเดียวกับการ์ด ปุ่มชิดขวา */
-.cupertino-review-modal .ant-modal-footer {
-  border-top: 1px solid var(--divider);
-  padding: 12px 16px 14px;
-  background: var(--surface);
+.review-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
 }
-.crm-footer { display: flex; justify-content: flex-end; gap: 8px; }
 
-/* ปุ่มให้ match ปุ่มรองในหน้า + เวอร์ชัน primary */
-.btn-secondary.compact {
-  width: auto;
-  min-width: 96px;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: calc(var(--radius) - 2px);
-  border: 1px solid var(--divider);
-  background: var(--chip);
-  color: var(--text);
+/* Title */
+.review-title {
+  margin: 0;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--gray-800);
+}
+
+/* Rating */
+.rating-block {
+  margin: 24px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rating-label {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gray-300);
+}
+
+.star-btn {
+  border: none;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--gray-300);
+  transition: color 120ms ease, transform 120ms ease;
+  outline: none;
+  border-radius: 8px;
+}
+
+.star-btn:hover,
+.star-btn:focus {
+  color: var(--yellow-400);
+  transform: translateY(-1px);
+}
+
+.star-btn.active {
+  color: var(--yellow-400);
+}
+
+.star-btn.active .material-symbols-outlined {
+  /* ทำให้ไอคอนเป็นแบบเติมเต็มเมื่อ active */
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+/* Sections */
+.section {
+  margin-top: 24px;
+}
+
+.section-title {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 18px;
   font-weight: 700;
-  transition: background .2s, border-color .2s, box-shadow .2s, transform .02s;
+  color: var(--gray-800);
 }
-.btn-secondary.compact:hover {
-  background: var(--surface-alt);
-  border-color: var(--line-strong);
-  box-shadow: 0 0 0 6px var(--accent-06);
-}
-.btn-secondary.compact:active { transform: translateY(1px); }
 
-.btn-secondary.primary {
-  background: var(--accent);
-  border: 1px solid var(--accent);
+/* Chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: none;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  outline: none;
+}
+
+.chip:hover,
+.chip:focus {
+  background: var(--primary-100);
+  color: var(--primary-800);
+  box-shadow: 0 0 0 2px var(--primary-500, #0ea5e9);
+}
+
+.chip-active {
+  background: var(--primary-100);
+  color: var(--primary-800);
+  box-shadow: 0 0 0 2px var(--primary-500, #0ea5e9);
+}
+
+/* Textarea */
+.textarea {
+  width: 100%;
+  border: 1px solid var(--gray-300);
+  background: #f8fafc;
+  color: var(--gray-800);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) inset;
+  font-size: 14px;
+  resize: vertical;
+  transition: border 120ms ease, box-shadow 120ms ease;
+}
+
+.textarea::placeholder {
+  color: #9ca3af;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+}
+
+/* Actions */
+.actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  border: none;
+  cursor: pointer;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: var(--primary-600);
   color: #fff;
-}
-.btn-secondary.primary:hover { filter: brightness(.98); box-shadow: 0 0 0 6px var(--accent-12); }
-.btn-secondary.primary:disabled {
-  opacity: .8; cursor: not-allowed;
-  box-shadow: none; filter: grayscale(.1);
-}
-
-/* โอเวอร์เลย์: โปร่งนุ่ม */
-.ant-modal-root .ant-modal-mask {
-  background-color: rgba(17, 20, 24, .32);
-  backdrop-filter: blur(2px);
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.25);
+  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
 
-/* Mobile */
-@media (max-width: 480px) {
-  .cupertino-review-modal .ant-modal-body { padding: 12px; }
-  .cupertino-review-modal .ant-modal-footer { padding: 10px 12px 12px; }
-  .crm-rate { font-size: 24px; }
+.btn-primary:hover {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+}
+
+.btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.3);
+}
+
+/* Responsive tweak */
+@media (max-width: 420px) {
+  .review-inner {
+    padding: 24px;
+  }
+  .review-title {
+    font-size: 20px;
+  }
+}
+/* ปรับขนาด/เว้นระยะดาวของ AntD ให้ใกล้เคียงเดิม */
+.rating-stars .ant-rate {
+  font-size: 32px;
+  color: var(--yellow-400); /* โทนใกล้เคียงของเดิม (#facc15) */
+}
+
+.rating-stars .ant-rate-star {
+  margin-inline-end: 8px;
 }
