@@ -1,7 +1,7 @@
 import "./landing.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Carousel, Spin, Empty, Tooltip } from "antd";
-import { CompassOutlined, BranchesOutlined, ScheduleOutlined, StarFilled } from "@ant-design/icons";
+import { Carousel, Spin, Empty, Tooltip, Avatar } from "antd";
+import { CompassOutlined, BranchesOutlined, ScheduleOutlined, StarFilled, UserOutlined } from "@ant-design/icons";
 import a1 from "../../assets/a.jpg";
 import a2 from "../../assets/b.jpg";
 import a3 from "../../assets/c.jpg";
@@ -73,6 +73,67 @@ const writeTopTripsCache = (items: EnrichedReview[]) => {
 };
 
 const HERO_IMAGES = [a1, a2, a3, a4, a5];
+
+/* =========================================================
+   Avatar Color (Best Practice)
+   - สีแตกต่างกัน “ต่อการ์ด” แม้ user เดิม
+   - คงที่ภายในหนึ่ง session (ไม่กระพริบ)
+   - เปลี่ยนได้ข้าม session (สุ่มใหม่)
+   ========================================================= */
+
+// แพเลตสีโทน Ant Design / Modern
+const AVATAR_COLORS = [
+  "#1677ff", "#13c2c2", "#52c41a", "#fa8c16",
+  "#f5222d", "#722ed1", "#eb2f96", "#2f54eb",
+  "#a0d911", "#faad14", "#1890ff", "#9254de",
+];
+
+// FNV-1a 32-bit hash (เสถียร เร็ว สั้น)
+const fnv1a = (str: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    // h *= 16777619 (ใช้บิทชิฟต์เลียนแบบเพื่อความเร็ว)
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  return h >>> 0;
+};
+
+// salt ต่อ session — ทำให้ seed ต่างกันเมื่อเปิดใช้งานรอบใหม่
+const SESSION_SALT = (() => {
+  try {
+    const key = "AVATAR_SALT_V1";
+    let s = sessionStorage.getItem(key);
+    if (!s) {
+      s = Math.random().toString(36).slice(2);
+      sessionStorage.setItem(key, s);
+    }
+    return s;
+  } catch {
+    // กรณี SSR/ไม่ใช้ sessionStorage
+    return "nosession";
+  }
+})();
+
+const pickColorFromSeed = (seed: string) => {
+  const h = fnv1a(`${seed}:${SESSION_SALT}`);
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+};
+
+// seed ต่อ “การ์ด” (instance) — คงที่ต่อใบ
+const seedForCard = (args: { tripId?: any; review?: any; index: number }) => {
+  const reviewKey = args.review?.ID ?? args.review?.Day ?? "r";
+  return `t-${String(args.tripId ?? "t")}|r-${String(reviewKey)}|i-${args.index}`;
+};
+
+// ชื่อย่อ
+const initials = (name?: string) => {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  const a = parts[0]?.[0] ?? "";
+  const b = parts[1]?.[0] ?? "";
+  return (a + b).toUpperCase();
+};
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
@@ -321,7 +382,7 @@ const Landing: React.FC = () => {
             <div className="landing-section-header">
               <h1 className="landing-section-title">Journey Inspirations from Travelers</h1>
               <p className="landing-section-description">
-                Dive into unique trip itineraries crafted by our global travelers.
+                สำรวจแผนการเดินทางสุดพิเศษ จากนักเดินทางของเราที่ได้แบ่งปันประสบการณ์และรีวิว
               </p>
             </div>
 
@@ -337,17 +398,22 @@ const Landing: React.FC = () => {
                   const tripId = (trip as any)?.ID;
                   const title = (trip as any)?.Name?.toString?.() || "-";
                   const rate = Number(review.Rate) || 0;
+
                   const userName =
                     user && (user.Firstname || user.Lastname)
                       ? `${user.Firstname ?? ""} ${user.Lastname ?? ""}`.trim()
                       : `User ${(review as any)?.User_id}`;
 
+                  // ขนาด “สุ่ม” แบบ deterministic (ตามลำดับ)
                   const layoutIdx = idx % 4;
                   const sizeClass =
                     layoutIdx === 2 ? "is-tall" :
-                      layoutIdx === 3 ? "is-short" : "is-regular";
+                    layoutIdx === 3 ? "is-short" : "is-regular";
 
-                  // ภาพการ์ด: ใช้ <img> เพื่อให้ lazy-load/แคชได้เต็มประสิทธิภาพ
+                  // สี Avatar ต่อการ์ด (คงที่ใน session)
+                  const seed = seedForCard({ tripId, review, index: idx });
+                  const color = pickColorFromSeed(seed);
+
                   return (
                     <article
                       key={tripId ?? idx}
@@ -371,9 +437,16 @@ const Landing: React.FC = () => {
 
                       <div className="inspire-info">
                         <div className="inspire-user">
-                          <span className="inspire-avatar" aria-hidden />
+                          <Avatar
+                            size={28}
+                            style={{ backgroundColor: color, color: "#fff" }}
+                            icon={!userName ? <UserOutlined /> : undefined}
+                          >
+                            {userName ? initials(userName) : null}
+                          </Avatar>
                           <span className="inspire-username">{userName}</span>
                         </div>
+
                         <h3 className="inspire-title">{title}</h3>
                         <div className="inspire-meta">
                           <Tooltip title={`${rate}/5`}>

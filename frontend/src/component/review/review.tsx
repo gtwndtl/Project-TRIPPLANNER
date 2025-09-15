@@ -42,7 +42,7 @@ const RateReviewModal: React.FC<Props> = ({
       className="cupertino-review-modal"
       title={
         tripName
-          ? `รีวิวทริป: ${tripName}${tripId ? ` (#${tripId})` : ""}`
+          ? `${tripName}${tripId ? ` (#${tripId})` : ""}`
           : "รีวิวทริปของคุณ"
       }
       open={open}
@@ -86,7 +86,7 @@ const RateReviewModal: React.FC<Props> = ({
               rows={3}
               maxLength={1000}
               showCount
-              placeholder="บอกสั้น ๆ ว่าชอบอะไร หรืออยากให้เราปรับปรุงอะไรบ้าง"
+              placeholder="บอกสั้น ๆ ว่าชอบอะไร หรือมีอะไรที่ต้องพิจารณาก่อนตัดสินใจไป"
             />
           </div>
         </div>

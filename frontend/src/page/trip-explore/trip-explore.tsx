@@ -1,6 +1,6 @@
 // src/component/trip-recommendations/TripExplore.tsx
 import React, { useEffect, useState, useCallback, memo } from "react";
-import { message, Spin, Empty, Avatar, Tooltip, Button } from "antd";
+import { message, Empty, Avatar, Tooltip, Button, Skeleton } from "antd";
 import { UserOutlined, StarFilled } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -26,21 +26,17 @@ type EnrichedReview = {
   trip: TripInterface | null;
   condition: ConditionInterface | null;
   user: UserInterface | null;
-  thumb: string; // ✅ คำนวณไว้เลย เพื่อลดงานตอน render
+  thumb: string;
 };
 
 const FALLBACK_THUMB_URL =
   "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop";
 
-/** ====== Cache config (Memory + localStorage) ====== */
-type CacheShape = {
-  items: EnrichedReview[];
-  savedAt: number;
-};
+/** ====== Cache config ====== */
+type CacheShape = { items: EnrichedReview[]; savedAt: number };
 const CACHE_KEY = "TripExploreCache:v2";
-const TTL_MS = 10 * 60 * 1000; // 10 นาที
+const TTL_MS = 10 * 60 * 1000;
 
-// memo ระดับโมดูล (อยู่จนออกจากแอป)
 const MEMO: { data?: CacheShape; inflight?: Promise<CacheShape> } = {};
 
 /** ====== Utils ====== */
@@ -86,7 +82,7 @@ const getThumbUrl = (
   return FALLBACK_THUMB_URL;
 };
 
-// พรีโหลดรูป (ไม่บล็อก UI)
+// พรีโหลดรูป (เงียบ ๆ)
 const preloadImages = (urls: string[], limit = 8) => {
   urls.slice(0, limit).forEach((u) => {
     const img = new Image();
@@ -96,7 +92,17 @@ const preloadImages = (urls: string[], limit = 8) => {
   });
 };
 
-/** ====== Card (memo เพื่อลด re-render) ====== */
+// Avatar: สีสุ่ม “ต่อการ์ด” ให้หลากหลายแม้เป็น user เดิม
+const colorFromIndex = (i: number) => `hsl(${(i * 47) % 360} 72% 46%)`;
+const initials = (name?: string) => {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  const a = parts[0]?.[0] ?? "";
+  const b = parts[1]?.[0] ?? "";
+  return (a + b).toUpperCase();
+};
+
+/** ====== Card (minimal) ====== */
 const TripCard: React.FC<{
   data: EnrichedReview;
   onOpen: (tripId: number | string) => void;
@@ -106,7 +112,7 @@ const TripCard: React.FC<{
   const tripId = (trip as any)?.ID;
   const title = (trip as any)?.Name?.toString?.() || "-";
   const days = toNum(trip?.Days);
-  const daysText = Number.isFinite(days) && days > 0 ? `${days} Days` : "— Days";
+  const daysText = Number.isFinite(days) && days > 0 ? `${days} วัน` : "— วัน";
   const userId = (review as any)?.User_id;
   const userName =
     user && (user.Firstname || user.Lastname)
@@ -118,38 +124,55 @@ const TripCard: React.FC<{
   };
 
   return (
-    <div className="trip-explore-card" onClick={() => onOpen(tripId)}>
-      <img
-        className="trip-explore-card-img"
-        src={thumb}
-        srcSet={`${thumb}&w=360 360w, ${thumb}&w=600 600w, ${thumb}&w=900 900w`}
-        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-        alt={title}
-        width={360}
-        height={220}
-        loading={index < 2 ? "eager" : "lazy"}
-        fetchPriority={index < 2 ? "high" : "low"}
-        decoding="async"
-        onError={onImgErr}
-      />
-
-      <div className="trip-explore-card-body">
-        <h3 className="trip-explore-card-title">
-          {title} • {daysText}
-        </h3>
-        <p className="trip-explore-card-comment">
-          {review.Comment || "No comment"}
-        </p>
-        <div className="trip-explore-card-footer">
-          <Avatar size="small" icon={<UserOutlined />} />
-          <span className="user">{userName}</span>
-          <Tooltip title={`${review.Rate}/5`}>
-            <StarFilled style={{ color: "#f59e0b", marginLeft: 8, marginRight: 4 }} />
-          </Tooltip>
-          <span>{review.Rate}</span>
-        </div>
+    <article className="tx-card" onClick={() => onOpen(tripId)} tabIndex={0}>
+      <div className="tx-media">
+        <img
+          className="tx-img"
+          src={thumb}
+          alt={title}
+          loading={index < 2 ? "eager" : "lazy"}
+          fetchPriority={index < 2 ? "high" : "low"}
+          decoding="async"
+          onError={onImgErr}
+        />
       </div>
-    </div>
+
+      <div className="tx-body">
+        <h3 className="tx-title">{title}</h3>
+
+        <div className="tx-meta">
+          <Tooltip title={`${review.Rate}/5`}>
+            <span className="tx-chip">
+              <StarFilled />
+              {review.Rate}
+            </span>
+          </Tooltip>
+          <span className="tx-dot" />
+          <span className="tx-subtle">{daysText}</span>
+        </div>
+
+        {review.Comment ? (
+          <p className="tx-comment">{review.Comment}</p>
+        ) : (
+          <p className="tx-comment tx-muted">ไม่มีคำบรรยาย</p>
+        )}
+      </div>
+
+      <div className="tx-footer" onClick={(e) => e.stopPropagation()}>
+        <Avatar
+          size={26}
+          style={{ backgroundColor: colorFromIndex(index), color: "#fff" }}
+          icon={!userName ? <UserOutlined /> : undefined}
+        >
+          {userName ? initials(userName) : null}
+        </Avatar>
+        <span className="tx-user">{userName}</span>
+        <span className="tx-spacer" />
+        <Button type="text" className="tx-cta" onClick={() => onOpen(tripId)}>
+          ดูรายละเอียด
+        </Button>
+      </div>
+    </article>
   );
 });
 TripCard.displayName = "TripCard";
@@ -166,9 +189,7 @@ const TripExplore: React.FC = () => {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify(c));
       MEMO.data = c;
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   };
   const readCache = (): CacheShape | null => {
     if (MEMO.data) return MEMO.data;
@@ -180,12 +201,11 @@ const TripExplore: React.FC = () => {
         MEMO.data = p;
         return p;
       }
-    } catch { /* ignore */ }
+    } catch {}
     return null;
   };
   const isFresh = (t: number) => Date.now() - t < TTL_MS;
 
-  // โหลดจริง (รวม de-dupe inflight)
   const fetchData = useCallback(async (): Promise<CacheShape> => {
     if (MEMO.inflight) return MEMO.inflight;
 
@@ -222,12 +242,10 @@ const TripExplore: React.FC = () => {
         })
         .filter(Boolean) as EnrichedReview[];
 
-      // เรียง rate มาก→น้อย
       enriched.sort((a, b) => toNum(b.review.Rate) - toNum(a.review.Rate));
 
       const cache: CacheShape = { items: enriched, savedAt: Date.now() };
       saveCache(cache);
-      // พรีโหลดรูปชุดแรก
       preloadImages(enriched.slice(0, 8).map((x) => x.thumb));
       return cache;
     })();
@@ -241,15 +259,13 @@ const TripExplore: React.FC = () => {
     }
   }, []);
 
-  // เสิร์ฟจากแคชก่อน แล้วค่อยรีเฟรชถ้าหมดอายุ
   useEffect(() => {
     const cached = readCache();
     if (cached) {
       setItems(cached.items);
       setLoading(false);
-      // พรีโหลดรูปจากแคช (รอบแรกกลับมาหน้าจะไว)
       preloadImages(cached.items.slice(0, 8).map((x) => x.thumb));
-      if (isFresh(cached.savedAt)) return; // สดพอ ไม่ต้องโหลดซ้ำ
+      if (isFresh(cached.savedAt)) return;
     }
     let mounted = true;
     (async () => {
@@ -264,42 +280,63 @@ const TripExplore: React.FC = () => {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [fetchData, msgApi]);
 
   const openTrip = (tripId: number | string) => {
-    // แอบพรีโหลดรูปในหน้าถัดไปได้ถ้ารู้ URL รูป แต่เอาแค่ไปหน้าเลยพอ
     navigate(`/itinerary/recommend/${tripId}`);
   };
 
   return (
-    <div className="trip-explore-page">
+    <div className="tx-page">
       {contextHolder}
-      <h2 className="trip-explore-title">Trip Explore</h2>
-      <p className="trip-explore-sub">
-        Find trips created by other users and get inspired for your next trip!
-      </p>
 
-      {loading && <div className="trip-explore-state"><Spin /></div>}
+      <header className="tx-header">
+        <h1 className="tx-title-text">Trip Explore</h1>
+        <p className="tx-sub">สำรวจแผนทริปจริงจากผู้ใช้ พร้อมคะแนนและรีวิว</p>
+      </header>
+
+      {loading && (
+        <div className="tx-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div className="tx-card" key={i}>
+              <div className="tx-media">
+                <Skeleton.Node style={{ width: "100%", height: "100%" }} active />
+              </div>
+              <div className="tx-body">
+                <Skeleton active paragraph={{ rows: 2 }} title={{ width: "60%" }} />
+              </div>
+              <div className="tx-footer" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {!loading && items.length === 0 && (
-        <div className="trip-explore-state">
+        <div className="tx-empty">
           <Empty description="ยังไม่มีรีวิวทริป" />
         </div>
       )}
 
       {!loading && items.length > 0 && (
         <>
-          <div className="trip-explore-grid">
+          <div className="tx-grid">
             {items.slice(0, visibleCount).map((data, idx) => (
-              <TripCard key={`${(data.trip as any)?.ID}-${idx}`} data={data} onOpen={openTrip} index={idx} />
+              <TripCard
+                key={`${(data.trip as any)?.ID}-${idx}`}
+                data={data}
+                index={idx}
+                onOpen={openTrip}
+              />
             ))}
           </div>
 
           {visibleCount < items.length && (
-            <div style={{ textAlign: "center", marginTop: 20 }}>
-              <Button type="primary" onClick={() => setVisibleCount((p) => p + 6)}>
-                Load More
+            <div className="tx-more">
+              <Button onClick={() => setVisibleCount((p) => p + 6)} className="tx-more-btn">
+                ดูเพิ่มเติม
               </Button>
             </div>
           )}

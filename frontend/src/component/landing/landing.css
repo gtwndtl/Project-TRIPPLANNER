@@ -523,3 +523,12 @@
   display: block;
   transform: translateZ(0); /* hint GPU */
 }
+.inspire-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* ทำขอบขาวบาง ๆ ให้ Avatar ลอยจากฉากหลังภาพ */
+.inspire-user .ant-avatar {
+  box-shadow: 0 0 0 2px #fff;
+}
