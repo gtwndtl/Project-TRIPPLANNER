@@ -1,6 +1,6 @@
 import "./landing.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Carousel, Spin, Empty, Tooltip, Avatar } from "antd";
+import { Carousel, Spin, Empty, Tooltip, Avatar, Button } from "antd";
 import { CompassOutlined, BranchesOutlined, ScheduleOutlined, StarFilled, UserOutlined } from "@ant-design/icons";
 import a1 from "../../assets/a.jpg";
 import a2 from "../../assets/b.jpg";
@@ -75,31 +75,23 @@ const writeTopTripsCache = (items: EnrichedReview[]) => {
 const HERO_IMAGES = [a1, a2, a3, a4, a5];
 
 /* =========================================================
-   Avatar Color (Best Practice)
-   - สีแตกต่างกัน “ต่อการ์ด” แม้ user เดิม
-   - คงที่ภายในหนึ่ง session (ไม่กระพริบ)
-   - เปลี่ยนได้ข้าม session (สุ่มใหม่)
+   Avatar Color (เหมือนเดิม)
    ========================================================= */
-
-// แพเลตสีโทน Ant Design / Modern
 const AVATAR_COLORS = [
   "#1677ff", "#13c2c2", "#52c41a", "#fa8c16",
   "#f5222d", "#722ed1", "#eb2f96", "#2f54eb",
   "#a0d911", "#faad14", "#1890ff", "#9254de",
 ];
 
-// FNV-1a 32-bit hash (เสถียร เร็ว สั้น)
 const fnv1a = (str: string) => {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
-    // h *= 16777619 (ใช้บิทชิฟต์เลียนแบบเพื่อความเร็ว)
     h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
   }
   return h >>> 0;
 };
 
-// salt ต่อ session — ทำให้ seed ต่างกันเมื่อเปิดใช้งานรอบใหม่
 const SESSION_SALT = (() => {
   try {
     const key = "AVATAR_SALT_V1";
@@ -110,7 +102,6 @@ const SESSION_SALT = (() => {
     }
     return s;
   } catch {
-    // กรณี SSR/ไม่ใช้ sessionStorage
     return "nosession";
   }
 })();
@@ -120,13 +111,11 @@ const pickColorFromSeed = (seed: string) => {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 };
 
-// seed ต่อ “การ์ด” (instance) — คงที่ต่อใบ
 const seedForCard = (args: { tripId?: any; review?: any; index: number }) => {
   const reviewKey = args.review?.ID ?? args.review?.Day ?? "r";
   return `t-${String(args.tripId ?? "t")}|r-${String(reviewKey)}|i-${args.index}`;
 };
 
-// ชื่อย่อ
 const initials = (name?: string) => {
   if (!name) return "";
   const parts = name.trim().split(/\s+/);
@@ -149,7 +138,7 @@ const Landing: React.FC = () => {
     }
   }, []);
 
-  // preconnect ไป unsplash เพื่อให้ handshake เร็วขึ้น
+  // preconnect ไป unsplash
   useEffect(() => {
     const hosts = ["https://images.unsplash.com", "https://plus.unsplash.com"];
     const links: HTMLLinkElement[] = [];
@@ -255,7 +244,7 @@ const Landing: React.FC = () => {
       setTopTrips(top);
       writeTopTripsCache(top);
 
-      // พรีโหลดรูปท็อปทริป (สำหรับรอบถัดไป)
+      // พรีโหลดรูปท็อปทริป
       preloadImages(top.map((t) => t.thumb));
     } catch (err) {
       console.error("loadTopTrips error:", err);
@@ -266,13 +255,12 @@ const Landing: React.FC = () => {
     }
   }, []);
 
-  // เสิร์ฟจากแคชก่อน แล้วค่อย revalidate แบบเงียบ ๆ
+  // serve from cache then revalidate
   useEffect(() => {
     const cached = readTopTripsCache();
     if (cached) {
       setTopTrips(cached);
       setLoading(false);
-      // revalidate เบื้องหลังถ้าอยู่นอก TTL
       const raw = sessionStorage.getItem(CACHE_KEY);
       const stale =
         !raw ||
@@ -296,23 +284,23 @@ const Landing: React.FC = () => {
     <>
       <div className="landing-container">
         <div className="landing-content-wrapper">
-          {/* Hero Section */}
+          {/* ===== Hero (modern/minimal) ===== */}
           <section className="landing-hero">
             <div className="landing-hero-stage">
               <Carousel
                 className="landing-hero-carousel"
-                arrows
                 autoplay
-                autoplaySpeed={3000}
+                autoplaySpeed={3600}
                 dots
                 draggable
+                adaptiveHeight={false}
               >
                 {HERO_IMAGES.map((img, idx) => (
                   <div key={idx}>
                     <div
                       className="landing-hero-slide"
                       style={{
-                        backgroundImage: `linear-gradient(rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.40) 100%), url(${img})`,
+                        backgroundImage: `linear-gradient(rgba(10,10,10,.12) 0%, rgba(0,0,0,.44) 100%), url(${img})`,
                       }}
                     />
                   </div>
@@ -320,64 +308,78 @@ const Landing: React.FC = () => {
               </Carousel>
 
               <div className="landing-hero-overlay">
-                <div className="landing-hero-text">
-                  <h1 className="landing-hero-title">TRIP PLANNER</h1>
-                  <h2 className="landing-hero-subtitle">วางแผนการเดินทางโดยง่ายเพียงแค่ระบุสถานที่</h2>
+                <div className="hero-copy">
+                  <h1 className="hero-title">Trip Planner</h1>
+                  <p className="hero-subtitle">
+                    วางแผนการเดินทางแบบมินิมอล ใช้งานง่าย ได้แผนที่พร้อมใช้จริง
+                  </p>
+                  <div className="hero-cta-row">
+                    <Button
+                      type="primary"
+                      size="large"
+                      shape="round"
+                      className="hero-cta"
+                      onClick={() => navigate("/trip-chat")}
+                    >
+                      เริ่มวางแผนตอนนี้
+                    </Button>
+                    <Button
+                      size="large"
+                      shape="round"
+                      className="hero-cta ghost"
+                      onClick={() => navigate("/itinerary/explore")}
+                    >
+                      สำรวจทริป
+                    </Button>
+                  </div>
                 </div>
-
-                <button className="button" onClick={() => navigate("/trip-chat")}>
-                  <span className="button_lg">
-                    <span className="button_sl"></span>
-                    <span className="button_text">เริ่มต้นการวางแผน</span>
-                  </span>
-                </button>
               </div>
             </div>
           </section>
 
-          {/* How It Works */}
+          {/* ===== How It Works (modern/minimal) ===== */}
           <section className="landing-how-it-works">
             <div className="landing-section-header">
               <h1 className="landing-section-title">How it works</h1>
               <p className="landing-section-description">
-                เพียงไม่กี่ขั้นตอน ระบบก็สามารถสร้างแผนการเดินทางที่เหมาะสมและพร้อมใช้งานสำหรับคุณ
+                เลือกปลายทาง ระบบคำนวณเส้นทาง-เวลาให้อัตโนมัติ แล้วนำไปใช้จริงหรือปรับแต่งตามใจคุณ
               </p>
             </div>
 
-            <div className="landing-steps-grid">
-              <div className="landing-step-card">
-                <div className="landing-step-icon">
-                  <CompassOutlined style={{ fontSize: 28, color: "#111418" }} />
+            <div className="landing-steps-grid modern">
+              <div className="landing-step-card modern">
+                <div className="landing-step-icon modern">
+                  <CompassOutlined />
                 </div>
                 <div className="landing-step-text">
                   <h2 className="landing-step-title">Tell us your destination</h2>
-                  <p className="landing-step-description">แจ้งจุดหมายปลายทางที่คุณต้องการเดินทางไป</p>
+                  <p className="landing-step-description">ระบุเมือง/สถานที่ที่อยากไป</p>
                 </div>
               </div>
 
-              <div className="landing-step-card">
-                <div className="landing-step-icon">
-                  <BranchesOutlined style={{ fontSize: 28, color: "#111418" }} />
+              <div className="landing-step-card modern">
+                <div className="landing-step-icon modern">
+                  <BranchesOutlined />
                 </div>
                 <div className="landing-step-text">
-                  <h2 className="landing-step-title">Algorithm processes your trip</h2>
-                  <p className="landing-step-description">ระบบใช้อัลกอริทึมประมวลผลและสร้างแผนการเดินทางที่เหมาะสม</p>
+                  <h2 className="landing-step-title">Algorithm plans for you</h2>
+                  <p className="landing-step-description">ระบบจัดลำดับเส้นทางและเวลาอัตโนมัติ</p>
                 </div>
               </div>
 
-              <div className="landing-step-card">
-                <div className="landing-step-icon">
-                  <ScheduleOutlined style={{ fontSize: 28, color: "#111418" }} />
+              <div className="landing-step-card modern">
+                <div className="landing-step-icon modern">
+                  <ScheduleOutlined />
                 </div>
                 <div className="landing-step-text">
-                  <h2 className="landing-step-title">Use your itinerary</h2>
-                  <p className="landing-step-description">นำแผนการเดินทางไปใช้จริงหรือปรับแก้ตามความต้องการ</p>
+                  <h2 className="landing-step-title">Use & tweak</h2>
+                  <p className="landing-step-description">นำแผนไปใช้จริงหรือแก้ไขได้ทันที</p>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Journey Inspirations */}
+          {/* ===== Journey Inspirations (คงเดิม) ===== */}
           <section className="landing-inspire">
             <div className="landing-section-header">
               <h1 className="landing-section-title">Journey Inspirations from Travelers</h1>
@@ -393,66 +395,51 @@ const Landing: React.FC = () => {
             )}
 
             {!loading && hasRecs && (
-              <div className="inspire-flex alt-stagger">
-                {topTrips.map(({ review, trip, user, thumb }, idx) => {
+              <div className="inspire-mosaic">
+                {topTrips.slice(0, 4).map(({ review, trip, user, thumb }, idx) => {
                   const tripId = (trip as any)?.ID;
                   const title = (trip as any)?.Name?.toString?.() || "-";
                   const rate = Number(review.Rate) || 0;
-
                   const userName =
                     user && (user.Firstname || user.Lastname)
                       ? `${user.Firstname ?? ""} ${user.Lastname ?? ""}`.trim()
                       : `User ${(review as any)?.User_id}`;
 
-                  // ขนาด “สุ่ม” แบบ deterministic (ตามลำดับ)
-                  const layoutIdx = idx % 4;
-                  const sizeClass =
-                    layoutIdx === 2 ? "is-tall" :
-                    layoutIdx === 3 ? "is-short" : "is-regular";
-
-                  // สี Avatar ต่อการ์ด (คงที่ใน session)
                   const seed = seedForCard({ tripId, review, index: idx });
                   const color = pickColorFromSeed(seed);
+
+                  const mosaicClass = ["mosaic-a", "mosaic-b", "mosaic-c", "mosaic-d"][idx % 4];
 
                   return (
                     <article
                       key={tripId ?? idx}
-                      className={`inspire-card ${sizeClass}`}
+                      className={`inspire-card ${mosaicClass}`}
                       onClick={() => navigate(`/itinerary/recommend/${tripId}`)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => e.key === "Enter" && navigate(`/itinerary/recommend/${tripId}`)}
                     >
                       <div className="inspire-cover">
-                        <img
-                          className="inspire-cover-img"
-                          src={thumb}
-                          alt=""
-                          loading={idx === 0 ? "eager" : "lazy"}
-                          decoding="async"
-                          sizes="(min-width:1024px) 600px, 100vw"
-                          fetchPriority={idx === 0 ? "high" : "low"}
-                        />
+                        <img className="inspire-cover-img" src={thumb} alt="" />
                       </div>
 
-                      <div className="inspire-info">
-                        <div className="inspire-user">
-                          <Avatar
-                            size={28}
-                            style={{ backgroundColor: color, color: "#fff" }}
-                            icon={!userName ? <UserOutlined /> : undefined}
-                          >
-                            {userName ? initials(userName) : null}
-                          </Avatar>
-                          <span className="inspire-username">{userName}</span>
-                        </div>
+                      <div className="inspire-gradient" />
 
+                      <div className="inspire-user fixed">
+                        <Avatar size={28} style={{ backgroundColor: color, color: "#fff" }}>
+                          {initials(userName)}
+                        </Avatar>
+                        <span className="inspire-username">{userName}</span>
+                      </div>
+                      {/* Top-right rating */}
+                      <div className="inspire-rating">
+                        <Tooltip title={`${rate}/5`}>
+                          <span className="inspire-chip rating"><StarFilled /> {rate}</span>
+                        </Tooltip>
+                      </div>
+
+                      <div className="inspire-info bottom">
                         <h3 className="inspire-title">{title}</h3>
-                        <div className="inspire-meta">
-                          <Tooltip title={`${rate}/5`}>
-                            <span className="inspire-chip"><StarFilled /> {rate}</span>
-                          </Tooltip>
-                        </div>
                       </div>
                     </article>
                   );

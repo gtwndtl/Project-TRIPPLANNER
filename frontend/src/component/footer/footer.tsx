@@ -4,6 +4,10 @@ import "./footer.css";
 
 const SiteFooter: React.FC = () => {
   const navigate = useNavigate();
+  const go = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    e.preventDefault();
+    navigate(path);
+  };
 
   return (
     <footer className="site-footer">
@@ -18,8 +22,8 @@ const SiteFooter: React.FC = () => {
           <div className="footer-col">
             <h4 className="footer-title">Product</h4>
             <ul className="footer-links">
-              <li><a onClick={() => navigate("/trip-chat")}>Trip Chat</a></li>
-              <li><a onClick={() => navigate("/itinerary/explore")}>Explore Trips</a></li>
+              <li><a href="/trip-chat" onClick={(e) => go(e, "/trip-chat")}>Trip Chat</a></li>
+              <li><a href="/itinerary/explore" onClick={(e) => go(e, "/itinerary/explore")}>Explore Trips</a></li>
             </ul>
           </div>
 
@@ -38,7 +42,7 @@ const SiteFooter: React.FC = () => {
             <h4 className="footer-title">Contact</h4>
             <ul className="footer-links">
               <li><a href="mailto:support@tripplanner.app">support@tripplanner.app</a></li>
-              <li><a href="#">Feedback</a></li>
+              <li><a href="#feedback">Feedback</a></li>
             </ul>
           </div>
         </div>
@@ -46,9 +50,9 @@ const SiteFooter: React.FC = () => {
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Trip Planner</span>
           <nav className="footer-bottom-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Status</a>
+            <a href="#privacy">Privacy</a>
+            <a href="#terms">Terms</a>
+            <a href="#status">Status</a>
           </nav>
         </div>
       </div>

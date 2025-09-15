@@ -661,12 +661,12 @@ const TripItinerary: React.FC = () => {
     try {
       setReviewSubmitting(true);
       await CreateReview(payload);
-      message.success("ขอบคุณสำหรับการให้คะแนน!");
+      msg.success("ขอบคุณสำหรับการให้คะแนน!");
       setReviewedTripIds((prev) => new Set([...prev, Number(activeTripId)]));
       closeRateModal();
     } catch (e: any) {
       console.error("CreateReview error:", e);
-      message.error(e?.message || "ส่งรีวิวไม่สำเร็จ");
+      msg.error(e?.message || "ส่งรีวิวไม่สำเร็จ");
     } finally {
       setReviewSubmitting(false);
     }

@@ -1,534 +1,380 @@
-/* Container หลัก */
+/* Container */
 .landing-container {
   display: flex;
   justify-content: center;
-  padding: 40px;
+  padding: 48px 20px;
   background-color: #fff;
 }
 
 .landing-content-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: 960px;
-  flex: 1;
+  width: 100%;
+  max-width: 1120px; /* กว้างขึ้นเล็กน้อย */
 }
 
-/* ================= Hero (Carousel) ================= */
+/* ================= Hero ================= */
 .landing-hero {
-  padding: 20px;
+  padding: 8px 0 4px;
 }
 
 .landing-hero-stage {
   position: relative;
-  /* ให้ overlay วางทับ Carousel ได้ */
 }
 
 .landing-hero-carousel {
-  border-radius: 0;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
-@media (min-width: 480px) {
+@media (max-width: 480px) {
   .landing-hero-carousel {
     border-radius: 12px;
-    overflow: hidden;
   }
 }
 
-/* สไลด์รูป (ไม่มีข้อความ/ปุ่มในนี้แล้ว) */
 .landing-hero-slide {
   position: relative;
-  min-height: 480px;
+  min-height: 520px;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-.landing-hero-slide::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: inherit;
-  /* copy background */
-  filter: blur(2px);
-  /* ระดับเบลอ */
-  z-index: 0;
-}
-
-
-/* ข้อความ + ปุ่ม วางทับแบบคงที่ */
+/* Overlay copy (minimal) */
 .landing-hero-overlay {
   position: absolute;
   inset: 0;
-  /* top/right/bottom/left: 0 */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-  padding: 16px;
+  display: grid;
+  place-items: center;
   pointer-events: none;
-  /* ป้องกันชนกับลูกศร Carousel */
+  padding: 20px;
 }
 
-.landing-hero-overlay .button {
+.hero-copy {
   pointer-events: auto;
-  /* ให้ปุ่มคลิกได้ */
-}
-
-.landing-hero-text {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  gap: 16px;
   text-align: center;
+  color: #fff;
+  padding: 14px 16px;
 }
 
-.landing-hero-title {
-  color: #fff;
-  font-size: 2.25rem;
-  /* 36px */
-  font-weight: 900;
-  line-height: 1.2;
-  letter-spacing: -0.033em;
+.hero-title {
   margin: 0;
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  text-shadow: 0 4px 28px rgba(0,0,0,.22);
 }
 
-@media (min-width: 480px) {
-  .landing-hero-title {
-    font-size: 3rem;
-  }
+.hero-subtitle {
+  margin: 0 0 8px 0;
+  font-size: clamp(14px, 2.6vw, 18px);
+  font-weight: 500;
+  opacity: .95;
+  text-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 
-.landing-hero-subtitle {
-  color: #fff;
-  font-size: 0.875rem;
-  /* 14px */
-  font-weight: 400;
-  line-height: 1.5;
+.hero-cta-row {
+  display: inline-flex;
+  gap: 10px;
+  justify-content: center;
 }
 
-@media (min-width: 480px) {
-  .landing-hero-subtitle {
-    font-size: 1rem;
-  }
+.hero-cta.ant-btn-lg {
+  height: 44px;
+  padding: 0 18px;
+  font-weight: 700;
 }
 
-/* ปรับจุด (dots) ของ Carousel ให้เห็นชัดบนพื้นภาพ */
+.hero-cta.ghost {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.5);
+  color: #fff!important;
+}
+
+.hero-cta.ghost:hover,
+.hero-cta.ghost:focus {
+  background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.75);
+  color: #ffffff!important;
+}
+
+/* ปรับจุด (dots) ให้เรียบ */
 .landing-hero .slick-dots li button {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.55);
 }
-
 .landing-hero .slick-dots li.slick-active button {
   background: #fff;
 }
 
-/* ================= How It Works ================= */
+/* ================= How It Works (modern/minimal) ================= */
 .landing-how-it-works {
   display: flex;
   flex-direction: column;
-  gap: 40px;
-  padding: 40px 16px;
-  margin-top: 70px;
-  margin-bottom: 70px;
+  gap: 28px;
+  padding: 56px 8px;
+  margin: 40px 0 64px;
 }
 
 .landing-section-header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  align-items: center;
 }
 
 .landing-section-title {
-  color: #111418;
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.2;
-  max-width: 720px;
+  color: #0f172a;
+  font-size: clamp(26px, 4.5vw, 36px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
   margin: 0;
-}
-
-@media (min-width: 480px) {
-  .landing-section-title {
-    font-size: 2.25rem;
-    font-weight: 900;
-    letter-spacing: -0.033em;
-  }
 }
 
 .landing-section-description {
   color: #60758a;
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.5;
+  font-size: 14px;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-.landing-steps-grid {
+.landing-steps-grid.modern {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
   gap: 12px;
+  grid-template-columns: repeat(3, minmax(0,1fr));
 }
 
-.landing-step-card {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  gap: 12px;
-  border-radius: 8px;
-  border: 1px solid #dbe0e6;
-  background-color: #fff;
-  padding: 16px;
+@media (max-width: 820px) {
+  .landing-steps-grid.modern {
+    grid-template-columns: repeat(1, minmax(0,1fr));
+  }
+}
+
+.landing-step-card.modern {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 14px;
   align-items: center;
-  text-align: center;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
 
-.landing-step-icon {
-  color: #111418;
+.landing-step-card.modern:hover {
+  transform: translateY(-1px);
+  border-color: #d0d7e2;
+  box-shadow: 0 8px 20px rgba(2,6,23,.06);
 }
 
-.landing-step-text {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
-  text-align: center;
+.landing-step-icon.modern {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #0b1220;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
 }
 
 .landing-step-title {
-  color: #111418;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.3;
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.25;
 }
 
 .landing-step-description {
-  color: #60758a;
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-/* ===== ปุ่ม (ตามของเดิม) ===== */
-.button {
-  -moz-appearance: none;
-  -webkit-appearance: none;
-  appearance: none;
-  border: none;
-  background: none;
-  color: #0f1923;
-  cursor: pointer;
-  position: relative;
-  padding: 8px;
-  margin-bottom: 20px;
-  text-transform: uppercase;
-  font-weight: bold;
+  margin: 4px 0 0 0;
+  color: #64748b;
   font-size: 14px;
-  transition: all .15s ease;
 }
 
-.button::before,
-.button::after {
-  content: '';
-  display: block;
-  position: absolute;
-  right: 0;
-  left: 0;
-  height: calc(50% - 5px);
-  border: 1px solid #7D8082;
-  transition: all .15s ease;
-}
-
-.button::before {
-  top: 0;
-  border-bottom-width: 0;
-}
-
-.button::after {
-  bottom: 0;
-  border-top-width: 0;
-}
-
-.button:active,
-.button:focus {
-  outline: none;
-}
-
-.button:active::before,
-.button:active::after {
-  right: 3px;
-  left: 3px;
-}
-
-.button:active::before {
-  top: 3px;
-}
-
-.button:active::after {
-  bottom: 3px;
-}
-
-.button_lg {
+/* Center headers globally (เหมือนเดิม) */
+.landing-section-header { align-items: center; text-align: center; }
+.landing-section-title { max-width: 820px; margin-left: auto; margin-right: auto; }
+.landing-section-description { max-width: 720px; margin-left: auto; margin-right: auto; }
+/* ===== Premium CTA Buttons (Hero) ===== */
+.hero-cta.ant-btn {
   position: relative;
-  display: block;
-  padding: 10px 20px;
+  overflow: hidden;                 /* สำหรับเอฟเฟกต์แสง */
+  border: 0;
+  border-radius: 999px;             /* โค้งมนพรีเมี่ยม */
+  font-weight: 700;
+  letter-spacing: .2px;
+  padding-inline: 20px;
+  height: 44px;                     /* คงความสูงอ่านง่าย */
+  transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+/* Primary: ไล่เฉดหรู + inner highlight */
+.hero-cta.ant-btn-primary {
   color: #fff;
-  background-color: #0f1923;
-  overflow: hidden;
-  box-shadow: inset 0px 0px 0px 1px transparent;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #38bdf8 100%);
+  box-shadow:
+    0 10px 24px rgba(37,99,235,.28),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.hero-cta.ant-btn-primary:hover,
+.hero-cta.ant-btn-primary:focus {
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 30px rgba(30,64,175,.32),
+    inset 0 1px 0 rgba(255,255,255,.22);
+}
+.hero-cta.ant-btn-primary:active {
+  transform: translateY(0);
+  box-shadow:
+    0 8px 18px rgba(30,64,175,.24),
+    inset 0 1px 0 rgba(255,255,255,.12);
 }
 
-.button_lg::before {
-  content: '';
-  display: block;
+/* Ghost: แก้วใสหรูหรา */
+.hero-cta.ghost.ant-btn {
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.45);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.16);
+}
+.hero-cta.ghost.ant-btn:hover,
+.hero-cta.ghost.ant-btn:focus {
+  background: rgba(255,255,255,.22);
+  border-color: rgba(255,255,255,.65);
+  transform: translateY(-1px);
+}
+
+/* เงาโฟกัสสวย ๆ บนพื้นมืด */
+.hero-cta.ant-btn:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(99,102,241,.28),
+    0 10px 24px rgba(37,99,235,.25);
+}
+
+/* แสงเฉียง “sheen” เมื่อ hover */
+.hero-cta.ant-btn::before {
+  content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 2px;
-  height: 2px;
-  background-color: #0f1923;
+  top: -160%;
+  left: -60%;
+  width: 60%;
+  height: 320%;
+  background: linear-gradient(
+    120deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.32) 35%,
+    rgba(255,255,255,.10) 65%,
+    rgba(255,255,255,0) 100%
+  );
+  transform: rotate(18deg);
+  transition: left .6s ease;
+  opacity: .55;
+  pointer-events: none;
+}
+.hero-cta.ant-btn:hover::before {
+  left: 120%;
 }
 
-.button_lg::after {
-  content: '';
-  display: block;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 4px;
-  height: 4px;
-  background-color: #0f1923;
-  transition: all .2s ease;
+/* ลดการสั่นเงาเวลา disabled */
+.hero-cta.ant-btn[disabled],
+.hero-cta.ant-btn[disabled]:hover {
+  filter: grayscale(.25);
+  transform: none;
+  box-shadow: none;
 }
 
-.button_sl {
-  display: block;
-  position: absolute;
-  top: 0;
-  bottom: -1px;
-  left: -8px;
-  width: 0;
-  background-color: #ff4655;
-  transform: skew(-15deg);
-  transition: all .2s ease;
-}
-
-.button_text {
-  position: relative;
-}
-
-.button:hover {
-  color: #0f1923;
-}
-
-.button:hover .button_sl {
-  width: calc(100% + 15px);
-}
-
-.button:hover .button_lg::after {
-  background-color: #fff;
-}
-
-
-/* ===== Journey Inspirations ===== */
+/* ===== Journey Inspirations (ใหม่) ===== */
 .landing-inspire {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 28px;
   padding: 40px 16px;
   margin-bottom: 70px;
 }
 
-.inspire-flex {
-  display: flex;
-  flex-wrap: wrap;
+/* กรอบสี่เหลี่ยมรวมของ 4 ใบ */
+.inspire-mosaic {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);  /* 12 คอลัมน์ยืดหยุ่น */
+  grid-template-rows: repeat(8, 1fr);      /* 8 แถว ยืดหยุ่น */
   gap: 18px;
+  aspect-ratio: 16 / 9;                    /* คุมให้เป็นสี่เหลี่ยมแนวนอน */
 }
 
-/* การ์ดพื้นฐาน */
+/* การ์ดพื้นฐาน (คงของเดิม, เพิ่มเฉพาะที่จำเป็น) */
 .inspire-card {
   position: relative;
-  cursor: pointer;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
-  color: #fff;
-  flex: 1 1 300px;
-  /* ฐานกว้างขั้นต่ำ */
-  min-width: 260px;
-  max-width: 620px;
-  /* กันไม่ให้ยืดเกิน */
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
-  transition: transform .25s ease, box-shadow .25s ease;
+  cursor: pointer;
   background: #000;
+  box-shadow: 0 12px 26px rgba(0,0,0,.18);
+  transition: transform .18s ease, box-shadow .22s ease;
+}
+.inspire-card:hover { transform: translateY(-2px); box-shadow: 0 18px 36px rgba(0,0,0,.22); }
+
+/* รูป + ไล่สี */
+.inspire-cover { position: absolute; inset: 0; }
+.inspire-cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.inspire-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.10) 0%, rgba(0,0,0,.55) 75%, rgba(0,0,0,.75) 100%);
+  pointer-events: none;
 }
 
-/* ขนาดแบบ “สุ่ม” (deterministic) */
-.inspire-card.is-regular {
-  height: 240px;
-}
+/* ผู้ใช้มุมบนซ้าย + เนื้อหามุมล่าง */
+.inspire-user.fixed { position: absolute; top: 14px; left: 16px; display: inline-flex; gap: 8px; z-index: 2; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.inspire-user.fixed .ant-avatar { box-shadow: 0 0 0 2px #fff; }
+.inspire-username { font-size: 13px; font-weight: 600; }
+.inspire-info.bottom { position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 2; display: grid; gap: 8px; color: #fff; }
+.inspire-title { margin: 0; font-size: clamp(18px, 2.6vw, 28px); font-weight: 900; line-height: 1.2; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.inspire-meta { display: inline-flex; gap: 8px; }
+.inspire-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 13px; color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); padding: 6px 10px; border-radius: 999px; backdrop-filter: blur(6px); }
 
-.inspire-card.is-wide {
-  height: 260px;
-  flex-basis: 520px;
-}
+/* ตำแหน่ง mosaic (เลข row/col ทำให้ 4 ใบไม่เท่ากันแต่ยังอยู่ในกรอบ) */
+.inspire-card.mosaic-a { grid-column: 1 / span 7;  grid-row: 1 / span 5; }  /* ซ้ายบน ใหญ่ */
+.inspire-card.mosaic-b { grid-column: 8 / -1;     grid-row: 1 / span 3; }  /* ขวาบน เล็ก */
+.inspire-card.mosaic-c { grid-column: 8 / -1;     grid-row: 4 / -1;    }   /* ขวาล่าง สูง */
+.inspire-card.mosaic-d { grid-column: 1 / span 7; grid-row: 6 / -1;    }   /* ซ้ายล่าง กว้าง */
 
-.inspire-card.is-tall {
-  height: 340px;
-  flex-basis: 360px;
-}
-
-@media (max-width: 1024px) {
-  .inspire-card.is-wide {
-    flex-basis: 460px;
-    height: 250px;
+/* Responsive: จอแคบให้เรียง 1 คอลัมน์ (ยังอยู่ในกรอบของแต่ละใบ) */
+@media (max-width: 820px) {
+  .inspire-mosaic {
+    aspect-ratio: auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
   }
-
-  .inspire-card.is-tall {
-    flex-basis: 320px;
-    height: 300px;
+  .inspire-card.mosaic-a,
+  .inspire-card.mosaic-b,
+  .inspire-card.mosaic-c,
+  .inspire-card.mosaic-d {
+    grid-column: auto; grid-row: auto; aspect-ratio: 16/9;
   }
-}
-
-@media (max-width: 640px) {
-
-  .inspire-card,
-  .inspire-card.is-regular,
-  .inspire-card.is-wide,
-  .inspire-card.is-tall {
-    flex-basis: 100%;
-    height: 260px;
-  }
-}
-
-.inspire-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, .22);
-}
-
-/* รูป */
-.inspire-cover {
+}/* วางดาวมุมขวาบน */
+.inspire-rating {
   position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-}
-
-.inspire-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.6) 80%);
-}
-
-/* เนื้อหา */
-.inspire-info {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 16px;
-  gap: 6px;
-}
-
-.inspire-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: .95;
-  font-weight: 600;
-}
-
-.inspire-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: #ffffff88;
-  backdrop-filter: blur(4px);
-}
-
-.inspire-username {
-  font-size: 13px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
-}
-
-.inspire-title {
-  margin: 4px 0 0 0;
-  font-size: 22px;
-  line-height: 1.2;
-  font-weight: 900;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .4);
-}
-
-.inspire-desc {
-  margin: 0;
-  font-size: 13px;
-  opacity: .95;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
-}
-
-.inspire-meta {
-  margin-top: auto;
-  display: flex;
-  gap: 8px;
-}
-
-.inspire-chip {
+  top: 12px;
+  right: 12px;
+  z-index: 3;            /* ให้อยู่เหนือ gradient/pseudo-elements */
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 800;
-  font-size: 13px;
-  background: rgba(255, 255, 255, .14);
-  border: 1px solid rgba(255, 255, 255, .25);
-  padding: 6px 10px;
-  border-radius: 999px;
+}
+
+/* ใช้สไตล์ chip เดิมได้เลย; เสริมความเด่นเล็กน้อย */
+.inspire-chip.rating {
+  background: rgba(255,255,255,.20);
+  border: 1px solid rgba(255,255,255,.35);
   backdrop-filter: blur(6px);
 }
 
-/* ===== Center all section headings & subtitles ===== */
-/* วางไว้ท้ายไฟล์เพื่อให้ override ค่าก่อนหน้าได้แน่นอน */
-
-.landing-section-header {
-  align-items: center;
-  /* จัดให้อยู่กลางแกน cross */
-  text-align: center;
-  /* จัดข้อความกึ่งกลาง */
-}
-
-.landing-section-title,
-.landing-section-description {
-  text-align: center;
-  /* กึ่งกลางข้อความ */
-  margin-left: auto;
-  /* กึ่งกลางบล็อกตามแนวนอน */
-  margin-right: auto;
-}
-
-/* เผื่อบางหัวข้อมี max-width ให้ดูบาลานซ์มากขึ้น */
-.landing-section-title {
-  max-width: 820px;
-}
-
-.landing-section-description {
-  max-width: 720px;
-}
-/* รูปในการ์ด เปลี่ยนจาก background-image → <img> */
-.inspire-cover {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-.inspire-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transform: translateZ(0); /* hint GPU */
-}
-.inspire-user {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-/* ทำขอบขาวบาง ๆ ให้ Avatar ลอยจากฉากหลังภาพ */
-.inspire-user .ant-avatar {
-  box-shadow: 0 0 0 2px #fff;
-}
+/* ถ้ายังไม่ลบเรตติ้งด้านล่าง ให้ซ่อน */
+.inspire-info .inspire-meta { display: none; }
