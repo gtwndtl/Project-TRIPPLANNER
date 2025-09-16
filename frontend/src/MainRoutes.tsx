@@ -13,7 +13,6 @@ import AuthLayout from "./layout/AuthLayout";
 import TripItineraryRecommend from "./page/itinerary-recommend/itinerary-recommend";
 import TripExplore from "./page/trip-explore/trip-explore";
 import GuestTripPreview from "./component/guest-preview.tsx/guest-preview";
-import ReviewTrip from "./component/review/review";
 
 
 const router = createBrowserRouter([
