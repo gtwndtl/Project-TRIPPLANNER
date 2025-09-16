@@ -30,4 +30,6 @@ type Landmark struct {
 
 	PriceMin int `gorm:"index"`
 	PriceMax int `gorm:"index"`
+
+	Types []TravelType `gorm:"many2many:landmark_types;constraint:OnDelete:CASCADE;" json:"types,omitempty"`
 }

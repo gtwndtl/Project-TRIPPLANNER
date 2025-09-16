@@ -31,4 +31,6 @@ type Accommodation struct {
 	// ใช้คิวรี/คำนวณ
 	PriceMin int `gorm:"index"`
 	PriceMax int `gorm:"index"`
+
+	Types []TravelType `gorm:"many2many:accommodation_types;constraint:OnDelete:CASCADE;" json:"types,omitempty"`
 }

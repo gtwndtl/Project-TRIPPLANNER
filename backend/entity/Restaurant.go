@@ -29,4 +29,6 @@ type Restaurant struct {
 
 	PriceMin int `gorm:"index"`
 	PriceMax int `gorm:"index"`
+
+	Types []TravelType `gorm:"many2many:restaurant_types;constraint:OnDelete:CASCADE;" json:"types,omitempty"`
 }

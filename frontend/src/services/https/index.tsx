@@ -501,32 +501,92 @@ async function ChangePassword(data: ChangePasswordInput): Promise<{ message: str
 
 
 // Async function สำหรับเรียกเส้นทางทริป
- async function GetRouteFromAPI(id: number, days: number, budget?: number) {
-  const q = new URLSearchParams({ start: `P${id}`, days: String(days) });
+async function GetRouteFromAPI(
+  id: number,
+  days: number,
+  budget?: number,
+  opts?: {
+    // รายชื่อ type (คั่นด้วย comma) เช่น "ชิวๆ,เดินเล่น"
+    prefer?: string;   // priority 1
+    prefer2?: string;  // priority 2
+    prefer3?: string;  // priority 3
+    // น้ำหนัก (0–1) ยิ่งต่ำยิ่ง “ลดต้นทุน” มาก
+    w1?: number;
+    w2?: number;
+    w3?: number;
+
+    // ออปชันขั้นสูง (ต้องตรงกับ backend)
+    mode?: "penalize" | "exclude";
+    penalty?: number;      // e.g. 1.3
+    distance?: number;     // e.g. 4000
+    k?: number;            // K ฝั่ง flow
+    k_mst?: number;        // K ฝั่ง MST
+    use_boykov?: boolean;  // true/false
+    n_top?: number;   
+  }
+) {
+  const q = new URLSearchParams({
+    start: `P${id}`,
+    days: String(days),
+  });
   if (budget != null) q.set("budget", String(budget));
 
+  const setIfStr = (k: string, v?: string) => {
+    if (typeof v === "string" && v.trim() !== "") q.set(k, v.trim());
+  };
+  const setIfNum = (k: string, v?: number) => {
+    if (typeof v === "number" && !Number.isNaN(v)) q.set(k, String(v));
+  };
+
+  // --- preferences ---
+  setIfStr("prefer",  opts?.prefer);
+  setIfStr("prefer2", opts?.prefer2);
+  setIfStr("prefer3", opts?.prefer3);
+
+  // default weight ถ้ามี prefer แต่ไม่ส่งน้ำหนัก
+  const w1 = opts?.w1 ?? (opts?.prefer  ? 0.6 : undefined);
+  const w2 = opts?.w2 ?? (opts?.prefer2 ? 0.8 : undefined);
+  const w3 = opts?.w3 ?? (opts?.prefer3 ? 0.9 : undefined);
+
+  setIfNum("w1", w1);
+  setIfNum("w2", w2);
+  setIfNum("w3", w3);
+
+  // --- advanced options ---
+  if (opts?.mode) q.set("mode", opts.mode);
+  setIfNum("penalty",  opts?.penalty);
+  setIfNum("distance", opts?.distance);
+  setIfNum("k",        opts?.k);
+  setIfNum("k_mst",    opts?.k_mst);
+  if (typeof opts?.use_boykov === "boolean") {
+    q.set("use_boykov", opts.use_boykov ? "1" : "0");
+  }
+  
   const url = `${apiUrl}/gen-route?${q.toString()}`;
+
   const res = await fetch(url, {
-    // ถ้า backend ใช้ cookie/session ให้เปิด
-    // credentials: "include",
+    headers: { Accept: "application/json" },
   });
 
   const bodyText = await res.text();
-
   if (!res.ok) {
-    throw new Error(`GetRouteFromAPI ${res.status} ${res.statusText}: ${bodyText.slice(0, 200)}`);
+    // พยายามดึง error จาก backend ถ้ามี
+    try {
+      const j = JSON.parse(bodyText);
+      throw new Error(j?.error || `GetRouteFromAPI ${res.status} ${res.statusText}`);
+    } catch {
+      throw new Error(`GetRouteFromAPI ${res.status} ${res.statusText}: ${bodyText.slice(0, 200)}`);
+    }
   }
 
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
-    throw new Error(
-      `GetRouteFromAPI expected JSON, got ${ct}. Body: ${bodyText.slice(0, 200)}`
-    );
+    throw new Error(`GetRouteFromAPI expected JSON, got ${ct}. Body: ${bodyText.slice(0, 200)}`);
   }
 
   try {
     return JSON.parse(bodyText);
-  } catch (e) {
+  } catch {
     throw new Error(`GetRouteFromAPI: cannot parse JSON. Body: ${bodyText.slice(0, 200)}`);
   }
 }
