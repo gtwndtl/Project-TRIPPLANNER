@@ -33,7 +33,6 @@ type RouteData = {
   accommodation?: { id?: string; [k: string]: any };
   trip_plan_by_day?: Array<{ day: number; plan: Array<any> }>;
   paths?: Array<{ from: string; to: string; distance_km?: number }>;
-  // อาจมี map/lookup อื่นๆ ที่เก็บ info ของสถานที่
   [k: string]: any;
 };
 
@@ -210,7 +209,6 @@ function reconstructGuestSps(activities: GuestActivity[], routeData: RouteData |
 
     out.push({ Day: act.day, ToCode: toCode });
 
-    // ขยับ index เฉพาะกิจกรรมปกติ
     if (!isCheckIn && !isCheckout) {
       if (dayPlan && currentIndex + 1 < (dayPlan.plan?.length || 0)) {
         dayPlanIndices[act.day] = currentIndex + 1;
@@ -260,14 +258,12 @@ function findLatLonNameForCode(routeData: RouteData, rawCode: string): { lat: nu
   const code = (rawCode || "").trim().toUpperCase();
   if (!code) return null;
 
-  // 1) ถ้าเป็นที่พัก
   if (routeData.accommodation?.id && String(routeData.accommodation.id).trim().toUpperCase() === code) {
     const obj = routeData.accommodation;
     const ll = pickLatLon(obj);
     if (ll) return { ...ll, name: nameOf(obj) || "ที่พัก" };
   }
 
-  // 2) หาใน trip_plan_by_day
   const inPlan = findPlaceObjInPlans(routeData, code);
   if (inPlan) {
     const ll =
@@ -280,7 +276,6 @@ function findLatLonNameForCode(routeData: RouteData, rawCode: string): { lat: nu
     if (ll) return { ...ll, name: nm };
   }
 
-  // 3) หาใน map/lookup ยอดนิยม
   const maps = [
     routeData.places_by_code,
     routeData.lookup,
@@ -298,14 +293,12 @@ function findLatLonNameForCode(routeData: RouteData, rawCode: string): { lat: nu
     }
   }
 
-  // 4) deep search ทั่ว routeData (จำกัดความลึก)
   const found = deepSearchByCode(routeData, code);
   if (found) {
     const ll = pickLatLon(found);
     if (ll) return { ...ll, name: nameOf(found) || code };
   }
 
-  // ไม่พบ
   return null;
 }
 
@@ -323,6 +316,9 @@ const MapRoute: React.FC = () => {
   const [days, setDays] = useState<number[]>([]);
   const [dayFilter, setDayFilter] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // race guard (ป้องกันผลตอบกลับเก่าทับใหม่)
+  const reqIdRef = useRef(0);
 
   // ---------- เปิด Google Maps เส้นทางของวัน ----------
   const openGoogleRoute = useCallback((pts: PlacePoint[]) => {
@@ -347,7 +343,7 @@ const MapRoute: React.FC = () => {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  // กันเปิดตอนลาก: จับตำแหน่งกด/ปล่อย
+  // กันเปิดตอนลาก
   const downRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     downRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
@@ -369,9 +365,8 @@ const MapRoute: React.FC = () => {
     [dayFilter, pointsByDay, openGoogleRoute]
   );
 
-  // sync TripID (เฉพาะโหมดล็อกอิน)
+  // ===== sync TripID "ทุกโหมด" =====
   useEffect(() => {
-    if (isPreviewOnly) return;
     const refreshTripId = () => setTripId(readTripId());
     refreshTripId();
     const onStorage = (e: StorageEvent) => {
@@ -387,180 +382,174 @@ const MapRoute: React.FC = () => {
       window.removeEventListener("TripIDChanged", onTripIdChanged as EventListener);
       window.removeEventListener("focus", onFocus);
     };
-  }, [isPreviewOnly]);
+  }, []);
 
-  // ===== Fetch points (แยก guest / login) =====
+  // ===== Helpers: แปลง rows -> PlacePoint[] ด้วย API =====
+  const buildPointsViaApi = useCallback(async (rows: ShortestPath[]) => {
+    const resultByDay: Record<number, PlacePoint[]> = {};
+    const cache = new Map<string, PlacePoint>();
+
+    for (const r of rows) {
+      const d = Number(r.Day ?? 0);
+      const rawCode = (r.ToCode || "").trim().toUpperCase();
+      if (!/^[APR]\d+$/.test(rawCode)) continue;
+
+      if (!resultByDay[d]) resultByDay[d] = [];
+
+      if (cache.has(rawCode)) {
+        resultByDay[d].push(cache.get(rawCode)!);
+        continue;
+      }
+
+      const kind = rawCode[0] as "A" | "P" | "R";
+      const idNum = parseIdFromCode(rawCode);
+      if (!idNum) continue;
+
+      let fetched: any = null;
+      try {
+        if (kind === "A") fetched = await GetAccommodationById(idNum);
+        else if (kind === "P") fetched = await GetLandmarkById(idNum);
+        else if (kind === "R") fetched = await GetRestaurantById(idNum);
+      } catch {
+        continue;
+      }
+
+      const ll = pickLatLon(fetched);
+      if (!ll) continue;
+
+      const p: PlacePoint = {
+        code: rawCode,
+        kind,
+        idNum,
+        day: d,
+        name: nameOf(fetched),
+        lat: ll.lat,
+        lon: ll.lon,
+      };
+      cache.set(rawCode, p);
+      resultByDay[d].push(p);
+    }
+
+    return resultByDay;
+  }, []);
+
+  // ===== Helpers: โหมด guest local =====
+  const buildPointsViaGuestLocal = useCallback(() => {
+    const routeRaw = localStorage.getItem(LOCAL_GUEST_ROUTE_DATA);
+    const actsRaw = localStorage.getItem(LOCAL_GUEST_ACTIVITIES);
+
+    const routeData: RouteData | null = routeRaw ? JSON.parse(routeRaw) : null;
+    const activities: GuestActivity[] = actsRaw ? JSON.parse(actsRaw) : [];
+
+    if (!routeData || !activities.length) {
+      throw new Error("ไม่พบข้อมูลทริป (guest) ในอุปกรณ์");
+    }
+
+    const sps = reconstructGuestSps(activities, routeData); // [{ Day, ToCode }]
+    const dayMap = new Map<number, Array<{ ToCode: string }>>();
+    sps.forEach((r) => {
+      if (!r.ToCode) return;
+      const d = Number(r.Day ?? 0);
+      if (!dayMap.has(d)) dayMap.set(d, []);
+      dayMap.get(d)!.push({ ToCode: r.ToCode });
+    });
+
+    const resultByDay: Record<number, PlacePoint[]> = {};
+    for (const [d, arr] of Array.from(dayMap.entries()).sort((a, b) => a[0] - b[0])) {
+      const points: PlacePoint[] = [];
+      for (const row of arr) {
+        const code = (row.ToCode || "").trim().toUpperCase();
+        if (!/^[APR]\d+$/.test(code)) continue;
+
+        const info = findLatLonNameForCode(routeData, code);
+        if (!info) continue;
+
+        const kind = (code[0] as "A" | "P" | "R") ?? "P";
+        const idNum = parseIdFromCode(code) ?? 0;
+
+        points.push({
+          code,
+          kind,
+          idNum,
+          day: d,
+          name: info.name || code,
+          lat: info.lat,
+          lon: info.lon,
+        });
+      }
+      resultByDay[d] = points;
+    }
+
+    return resultByDay;
+  }, []);
+
+  // ===== Fetch points (ถ้ามี TripID → ยิง API แม้เป็น guest; ถ้า fail → fallback guest local) =====
   useEffect(() => {
     let mounted = true;
+    const myReq = ++reqIdRef.current;
 
-    const fetchForLoggedIn = async () => {
+    const run = async () => {
       const id = readTripId();
-      if (!id) {
-        setError("ไม่พบ TripID ใน localStorage");
-        setPointsByDay({});
-        setDays([]);
-        setDayFilter(null);
-        return;
-      }
       setTripId(id);
       setLoading(true);
       setError(null);
+
       try {
-        const allResp: any = await GetAllShortestPaths();
-        const all: ShortestPath[] = Array.isArray(allResp) ? allResp : allResp?.data ?? [];
-        const rows = (all || []).filter((r) => Number(r.TripID) === Number(id) && r.ToCode);
+        if (id) {
+          // 1) ดึงทั้งหมด แล้วกรอง TripID
+          const allResp: any = await GetAllShortestPaths();
+          const all: ShortestPath[] = Array.isArray(allResp) ? allResp : allResp?.data ?? [];
+          const rows = (all || []).filter((r) => Number(r.TripID) === Number(id) && r.ToCode);
 
-        const dayMap = new Map<number, ShortestPath[]>();
-        rows.forEach((r) => {
-          const d = Number(r.Day ?? 0);
-          if (!dayMap.has(d)) dayMap.set(d, []);
-          dayMap.get(d)!.push(r);
-        });
+          const byDay = await buildPointsViaApi(rows);
+          if (!mounted || myReq !== reqIdRef.current) return;
 
-        const resultByDay: Record<number, PlacePoint[]> = {};
-        const cache = new Map<string, PlacePoint>();
-
-        for (const [d, arr] of Array.from(dayMap.entries()).sort((a, b) => a[0] - b[0])) {
-          const points: PlacePoint[] = [];
-          for (const sp of arr) {
-            const code = (sp.ToCode || "").trim().toUpperCase();
-            if (!/^[APR]\d+$/.test(code)) continue;
-
-            if (cache.has(code)) {
-              points.push(cache.get(code)!);
-              continue;
-            }
-
-            // โหมดล็อกอิน: ยังต้อง fetch รายละเอียดเพื่อได้ lat/lon
-            const kind = code[0] as "A" | "P" | "R";
-            const idNum = parseIdFromCode(code);
-            if (!idNum) continue;
-
-            let fetched: any = null;
-            try {
-              if (kind === "A") fetched = await GetAccommodationById(idNum);
-              else if (kind === "P") fetched = await GetLandmarkById(idNum);
-              else if (kind === "R") fetched = await GetRestaurantById(idNum);
-            } catch {}
-
-            const ll = pickLatLon(fetched);
-            if (!ll) continue;
-
-            const p: PlacePoint = {
-              code,
-              kind,
-              idNum,
-              day: d,
-              name: nameOf(fetched),
-              lat: ll.lat,
-              lon: ll.lon,
-            };
-            cache.set(code, p);
-            points.push(p);
-          }
-          resultByDay[d] = points;
-        }
-
-        if (!mounted) return;
-        const sortedDays = Object.keys(resultByDay)
-          .map(Number)
-          .sort((a, b) => a - b);
-        setPointsByDay(resultByDay);
-        setDays(sortedDays);
-        if (sortedDays.length === 0) setDayFilter(null);
-        else if (dayFilter == null || !sortedDays.includes(dayFilter)) setDayFilter(sortedDays[0]);
-      } catch (e: any) {
-        if (!mounted) return;
-        setError(e?.message || "โหลดข้อมูลไม่สำเร็จ");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    const fetchForGuest = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const routeRaw = localStorage.getItem(LOCAL_GUEST_ROUTE_DATA);
-        const actsRaw = localStorage.getItem(LOCAL_GUEST_ACTIVITIES);
-
-        const routeData: RouteData | null = routeRaw ? JSON.parse(routeRaw) : null;
-        const activities: GuestActivity[] = actsRaw ? JSON.parse(actsRaw) : [];
-
-        if (!routeData || !activities.length) {
-          setPointsByDay({});
-          setDays([]);
-          setDayFilter(null);
-          setError("ไม่พบข้อมูลทริป (guest) ในอุปกรณ์");
+          const sortedDays = Object.keys(byDay).map(Number).sort((a, b) => a - b);
+          setPointsByDay(byDay);
+          setDays(sortedDays);
+          if (sortedDays.length === 0) setDayFilter(null);
+          else if (dayFilter == null || !sortedDays.includes(dayFilter)) setDayFilter(sortedDays[0]);
           return;
         }
 
-        // 1) สร้างลำดับ ToCode ตามกิจกรรม
-        const sps = reconstructGuestSps(activities, routeData); // [{ Day, ToCode }]
+        // 2) ไม่มี TripID → guest local
+        const byDayLocal = buildPointsViaGuestLocal();
+        if (!mounted || myReq !== reqIdRef.current) return;
 
-        // 2) group by day
-        const dayMap = new Map<number, Array<{ ToCode: string }>>();
-        sps.forEach((r) => {
-          if (!r.ToCode) return;
-          const d = Number(r.Day ?? 0);
-          if (!dayMap.has(d)) dayMap.set(d, []);
-          dayMap.get(d)!.push({ ToCode: r.ToCode });
-        });
-
-        // 3) แปลง ToCode -> lat/lon โดย "ไม่ยิง API" ใช้ข้อมูลที่มีอยู่แล้วใน routeData
-        const resultByDay: Record<number, PlacePoint[]> = {};
-
-        for (const [d, arr] of Array.from(dayMap.entries()).sort((a, b) => a[0] - b[0])) {
-          const points: PlacePoint[] = [];
-          for (const row of arr) {
-            const code = (row.ToCode || "").trim().toUpperCase();
-            if (!/^[APR]\d+$/.test(code)) continue;
-
-            const info = findLatLonNameForCode(routeData, code);
-            if (!info) continue; // ถ้าไม่มี lat/lon ในข้อมูล -> ข้าม (ไม่ fetch)
-
-            const kind = (code[0] as "A" | "P" | "R") ?? "P";
-            const idNum = parseIdFromCode(code) ?? 0;
-
-            points.push({
-              code,
-              kind,
-              idNum,
-              day: d,
-              name: info.name || code,
-              lat: info.lat,
-              lon: info.lon,
-            });
-          }
-          resultByDay[d] = points;
-        }
-
-        if (!mounted) return;
-        const sortedDays = Object.keys(resultByDay)
-          .map(Number)
-          .sort((a, b) => a - b);
-        setPointsByDay(resultByDay);
+        const sortedDays = Object.keys(byDayLocal).map(Number).sort((a, b) => a - b);
+        setPointsByDay(byDayLocal);
         setDays(sortedDays);
         if (sortedDays.length === 0) setDayFilter(null);
         else if (dayFilter == null || !sortedDays.includes(dayFilter)) setDayFilter(sortedDays[0]);
       } catch (e: any) {
-        if (!mounted) return;
-        setError(e?.message || "โหลดข้อมูลไม่สำเร็จ (guest)");
+        // ถ้ายิง API ไม่ผ่านใน guest → fallback ไป local
+        try {
+          const byDayLocal = buildPointsViaGuestLocal();
+          if (!mounted || myReq !== reqIdRef.current) return;
+
+          const sortedDays = Object.keys(byDayLocal).map(Number).sort((a, b) => a - b);
+          setPointsByDay(byDayLocal);
+          setDays(sortedDays);
+          if (sortedDays.length === 0) setDayFilter(null);
+          else if (dayFilter == null || !sortedDays.includes(dayFilter)) setDayFilter(sortedDays[0]);
+          setError(null); // ใช้ local สำเร็จ
+        } catch (e2: any) {
+          if (!mounted || myReq !== reqIdRef.current) return;
+          setPointsByDay({});
+          setDays([]);
+          setDayFilter(null);
+          setError(e2?.message || "โหลดข้อมูลไม่สำเร็จ (guest)");
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && myReq === reqIdRef.current) setLoading(false);
       }
     };
 
-    if (isPreviewOnly) {
-      fetchForGuest();
-    } else {
-      fetchForLoggedIn();
-    }
-
+    run();
     return () => {
       mounted = false;
     };
-  }, [isPreviewOnly, dayFilter]);
+  }, [buildPointsViaApi, buildPointsViaGuestLocal, dayFilter]);
 
   // init map
   useEffect(() => {
@@ -735,7 +724,6 @@ const MapRoute: React.FC = () => {
         </div>
       )}
 
-      {/* wrapper ครอบ map เพื่อใส่ overlay ตอน hover */}
       <div
         className="map-wrapper"
         onMouseDown={handleMouseDown}

@@ -384,13 +384,13 @@ const TripChat = () => {
     },
     ...(isPreviewOnly
       ? [
-          {
-            id: crypto.randomUUID(),
-            role: "ai",
-            text: "โหมดพรีวิว: คุณสร้างและดูแผนได้ แต่ยังไม่บันทึกลงระบบ หากต้องการบันทึก โปรดล็อกอิน",
-            kind: "text",
-          } as Msg,
-        ]
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          text: "โหมดพรีวิว: คุณสร้างและดูแผนได้ แต่ยังไม่บันทึกลงระบบ หากต้องการบันทึก โปรดล็อกอิน",
+          kind: "text",
+        } as Msg,
+      ]
       : []),
   ]);
 
@@ -460,7 +460,7 @@ const TripChat = () => {
           redirectRef.current = null;
           try {
             navigate("/itinerary");
-          } catch {}
+          } catch { }
         }
       }, 1000);
 
@@ -493,7 +493,7 @@ const TripChat = () => {
     redirectRef.current = null;
     try {
       navigate("/itinerary");
-    } catch {}
+    } catch { }
   }, [navigate]);
 
   // เคลียร์ interval เมื่อ component unmount
@@ -595,8 +595,7 @@ const TripChat = () => {
         setLoading(true);
         const typesText = [pref1, pref2, pref3].filter(Boolean).join(" / ") || "ไม่ระบุสไตล์";
         pushBot(
-          `กำลังสร้างแผนทริปสำหรับ "${keyword}" ${days} วัน${
-            budget ? ` ภายใต้งบ ~${budget.toLocaleString()} บาท` : ""
+          `กำลังสร้างแผนทริปสำหรับ "${keyword}" ${days} วัน${budget ? ` ภายใต้งบ ~${budget.toLocaleString()} บาท` : ""
           } (${typesText})...`
         );
 
@@ -659,6 +658,10 @@ ${budgetText}
 
         // ====== โหมดพรีวิว: เก็บทุกอย่างลง localStorage ======
         if (isPreviewOnly) {
+
+          localStorage.removeItem("TripID");
+          try { window.dispatchEvent(new Event("TripIDChanged")); } catch { }
+          
           const activities = parseTripPlanTextToActivities(tripPlanText || "");
 
           // 1) เก็บข้อความแผน + route + activities
@@ -685,12 +688,12 @@ ${budgetText}
               prevMeta?.guestCondition ??
               (typeof days === "number" && days > 0
                 ? {
-                    day: days.toString(),
-                    price: budget ?? 0,
-                    accommodation: "โรงแรม",
-                    landmark: selectedPlace?.Name || keyword,
-                    style: [pref1, pref2, pref3].filter(Boolean).join(",") || "ทั่วไป",
-                  }
+                  day: days.toString(),
+                  price: budget ?? 0,
+                  accommodation: "โรงแรม",
+                  landmark: selectedPlace?.Name || keyword,
+                  style: [pref1, pref2, pref3].filter(Boolean).join(",") || "ทั่วไป",
+                }
                 : undefined),
           };
           localStorage.setItem(LOCAL_GUEST_META, JSON.stringify(mergedMeta));
@@ -730,7 +733,7 @@ ${budgetText}
 
         const savedTrip = await CreateTrip(newTrip);
         localStorage.setItem("TripID", savedTrip.ID!.toString());
-        try { window.dispatchEvent(new Event("TripIDChanged")); } catch {}
+        try { window.dispatchEvent(new Event("TripIDChanged")); } catch { }
 
         // Save shortest paths
         const activities = parseTripPlanTextToActivities(tripPlanText || "");

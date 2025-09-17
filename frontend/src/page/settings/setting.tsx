@@ -8,7 +8,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { UserInterface } from "../../interfaces/User";
 import ProfileInfo from "../../component/setting/profile/profile";
 import AccountInfo from "../../component/setting/account/account";
-import Preferences from "../../component/setting/preferences/preferences";
 import ChangePassword from "../../component/setting/account/change-assword/change-password.tsx";
 
 import { useUserId } from "../../hooks/useUserId";
@@ -106,11 +105,6 @@ const Setting = () => {
           }
         />
       ),
-    },
-    {
-      key: "preferences",
-      label: "Preferences",
-      children: <Preferences />,
     },
   ];
 

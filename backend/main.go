@@ -71,7 +71,7 @@ func main() {
 	// Accommodation routes (ต้องล็อกอิน)
 	authorized.POST("/accommodations", accommodationCtrl.Create)
 	r.GET("/accommodations", accommodationCtrl.GetAll)
-	authorized.GET("/accommodations/:id", accommodationCtrl.GetByID)
+	r.GET("/accommodations/:id", accommodationCtrl.GetByID)
 	authorized.PUT("/accommodations/:id", accommodationCtrl.Update)
 	authorized.DELETE("/accommodations/:id", accommodationCtrl.Delete)
 
@@ -85,14 +85,14 @@ func main() {
 	// Landmark routes
 	authorized.POST("/landmarks", landmarkCtrl.Create)
 	r.GET("/landmarks", landmarkCtrl.GetAll)
-	authorized.GET("/landmarks/:id", landmarkCtrl.GetByID)
+	r.GET("/landmarks/:id", landmarkCtrl.GetByID)
 	authorized.PUT("/landmarks/:id", landmarkCtrl.Update)
 	authorized.DELETE("/landmarks/:id", landmarkCtrl.Delete)
 
 	// Restaurant routes
 	authorized.POST("/restaurants", restaurantCtrl.Create)
 	r.GET("/restaurants", restaurantCtrl.GetAll)
-	authorized.GET("/restaurants/:id", restaurantCtrl.GetByID)
+	r.GET("/restaurants/:id", restaurantCtrl.GetByID)
 	authorized.PUT("/restaurants/:id", restaurantCtrl.Update)
 	authorized.DELETE("/restaurants/:id", restaurantCtrl.Delete)
 
