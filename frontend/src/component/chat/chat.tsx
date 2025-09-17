@@ -295,7 +295,9 @@ export type Msg =
   | { id: string; role: "ai"; kind: "days-prompt"; placeName: string; image?: string; text: string }
   | { id: string; role: "ai"; kind: "days-quickpick"; choices: number[] }
   | { id: string; role: "ai"; kind: "budget-prompt"; text: string }
-  | { id: string; role: "ai"; kind: "budget-quickpick"; choices: number[] };
+  | { id: string; role: "ai"; kind: "budget-quickpick"; choices: number[] }
+  // ✅ ใหม่: การ์ดนับถอยหลังนำทาง พร้อมปุ่มยกเลิก/ไปเลย
+  | { id: string; role: "ai"; kind: "redirect-countdown"; seconds: number; total: number; text?: string };
 
 // ===== Helpers: ดึง keyword/days/budget + types จากข้อความผู้ใช้ =====
 function parseBudgetToNumber(s: string): number | null {
@@ -410,6 +412,97 @@ const TripChat = () => {
   const [pref3, setPref3] = useState<string>(""); // prefer3
 
   const suggestions = ["ฉันอยากไปสยาม 3 วัน", "อยากไปอารีย์ 2 วัน งบ 5000 เน้นชิวๆ เดินเล่น", "อยากไปวัดอรุณ 1 วัน สายบุญ"];
+
+  // ====== Redirect countdown state (timer refs) ======
+  const redirectRef = useRef<{ id: string; seconds: number; total: number; intervalId: number | null } | null>(null);
+
+  const startRedirectCountdown = useCallback(
+    (initialSeconds = 5) => {
+      const id = crypto.randomUUID();
+      const total = initialSeconds;
+
+      // เพิ่มการ์ดนับถอยหลัง
+      setMessages((prev) => [
+        ...prev,
+        {
+          id,
+          role: "ai",
+          kind: "redirect-countdown",
+          seconds: initialSeconds,
+          total,
+          text: "บันทึกทริปเรียบร้อยแล้ว",
+        } as Msg,
+      ]);
+
+      // ตั้ง ref
+      redirectRef.current = { id, seconds: initialSeconds, total, intervalId: null };
+
+      // เริ่ม interval
+      const intervalId = window.setInterval(() => {
+        if (!redirectRef.current) return;
+        const next = redirectRef.current.seconds - 1;
+
+        // อัปเดต message ให้แสดงวินาทีล่าสุด
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === id && (m as any).kind === "redirect-countdown"
+              ? ({ ...(m as any), seconds: next } as Msg)
+              : m
+          )
+        );
+
+        // อัปเดต ref
+        redirectRef.current = { ...redirectRef.current, seconds: next };
+
+        // ครบเวลา → นำทาง
+        if (next <= 0) {
+          window.clearInterval(intervalId);
+          redirectRef.current = null;
+          try {
+            navigate("/itinerary");
+          } catch {}
+        }
+      }, 1000);
+
+      // เก็บ intervalId
+      if (redirectRef.current) redirectRef.current.intervalId = intervalId;
+    },
+    [navigate]
+  );
+
+  const cancelRedirect = useCallback(() => {
+    const info = redirectRef.current;
+    if (info?.intervalId) window.clearInterval(info.intervalId);
+    redirectRef.current = null;
+
+    // ลบการ์ดนับถอยหลัง แล้วแจ้งยกเลิก
+    setMessages((prev) => [
+      ...prev.filter((m) => m.id !== info?.id),
+      {
+        id: crypto.randomUUID(),
+        role: "ai",
+        text: 'ยกเลิกการนำทางแล้ว คุณสามารถเข้าไปที่หน้า "My Trip" จากเมนูได้ทุกเมื่อ',
+        kind: "text",
+      } as Msg,
+    ]);
+  }, []);
+
+  const goNow = useCallback(() => {
+    const info = redirectRef.current;
+    if (info?.intervalId) window.clearInterval(info.intervalId);
+    redirectRef.current = null;
+    try {
+      navigate("/itinerary");
+    } catch {}
+  }, [navigate]);
+
+  // เคลียร์ interval เมื่อ component unmount
+  useEffect(() => {
+    return () => {
+      if (redirectRef.current?.intervalId) window.clearInterval(redirectRef.current.intervalId);
+      redirectRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -730,13 +823,8 @@ ${budgetText}
           }
         }
 
-        // แจ้งและพาไปหน้า My Trip
-        pushBot("บันทึกทริปเรียบร้อยแล้ว กำลังพาคุณไปหน้า My Trip...");
-        setTimeout(() => {
-          try {
-            navigate("/itinerary");
-          } catch {}
-        }, 5000);
+        // ✅ แทนที่จะ setTimeout → แสดงการ์ดนับถอยหลัง 5 วิ พร้อมปุ่มยกเลิก/ไปเลย
+        startRedirectCountdown(5);
       } catch (error) {
         console.error("Error generating route or calling Groq", error);
         pushBot("ขออภัย เกิดข้อผิดพลาดระหว่างการสร้างแผนทริป กรุณาลองใหม่ภายหลัง");
@@ -744,7 +832,7 @@ ${budgetText}
         setLoading(false);
       }
     },
-    [isPreviewOnly, navigate, selectedPlace?.Name, userIdNum, pref1, pref2, pref3]
+    [isPreviewOnly, navigate, selectedPlace?.Name, userIdNum, pref1, pref2, pref3, startRedirectCountdown]
   );
 
   // ===== Quick-pick วัน =====
@@ -1405,6 +1493,86 @@ ${landmarkNames}
                       </div>
                       <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280" }}>
                         หรือพิมพ์จำนวนเงินเป็นตัวเลข (เช่น 5000 หรือ 5k)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ✅ redirect-countdown card
+          if (m.role === "ai" && (m as any).kind === "redirect-countdown") {
+            const rc = m as Extract<Msg, { kind: "redirect-countdown" }>;
+            const percent = Math.max(0, Math.min(100, Math.round(((rc.total - rc.seconds) / rc.total) * 100)));
+            return (
+              <div key={m.id} className="trip-chat-row">
+                <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
+                <div className="trip-chat-bubble-group left">
+                  <p className="trip-chat-author">AI Assistant</p>
+                  <div className="trip-chat-bubble ai">
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                        {rc.text || "บันทึกทริปเรียบร้อยแล้ว"}
+                      </div>
+                      <div style={{ color: "#374151", marginBottom: 10 }}>
+                        จะพาคุณไปหน้า <b>My Trip</b> ใน <b>{rc.seconds}</b> วินาที
+                      </div>
+
+                      {/* Progress bar */}
+                      <div
+                        aria-label="progress"
+                        style={{
+                          width: "100%",
+                          height: 8,
+                          background: "#f3f4f6",
+                          borderRadius: 999,
+                          overflow: "hidden",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${percent}%`,
+                            height: "100%",
+                            background: "#d1d5db",
+                            transition: "width 300ms linear",
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          onClick={cancelRedirect}
+                          style={{
+                            padding: "8px 12px",
+                            border: "1px solid #d1d5db",
+                            borderRadius: 8,
+                            background: "#fff",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                          title="ยกเลิกการนำทางอัตโนมัติ"
+                        >
+                          ยกเลิก
+                        </button>
+                        <button
+                          type="button"
+                          onClick={goNow}
+                          style={{
+                            padding: "8px 12px",
+                            border: "1px solid #111827",
+                            borderRadius: 8,
+                            background: "#111827",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                          title="ไปหน้า My Trip ตอนนี้"
+                        >
+                          ไปเลยตอนนี้
+                        </button>
                       </div>
                     </div>
                   </div>
