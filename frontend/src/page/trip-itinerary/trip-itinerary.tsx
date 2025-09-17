@@ -55,7 +55,6 @@ const mapCardStyle: React.CSSProperties = {
   padding: "8px 10px 12px",
 };
 
-
 // ===== Utils =====
 const deepClone = <T,>(obj: T): T => {
   if (typeof (globalThis as any).structuredClone === "function") {
@@ -162,32 +161,39 @@ const TripItinerary: React.FC = () => {
     localStorage.setItem(TAB_STORAGE_KEY, tabKey);
   }, [tabKey]);
 
-
+  // ฟัง TripID + isLogin จาก storage + custom event และ focus
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "TripID") {
-        const id = localStorage.getItem("TripID");
-        setActiveTripId(id ? Number(id) : null);
-      }
-      if (e.key === "isLogin") {
-        setIsLogin(localStorage.getItem("isLogin") === "true");
-      }
-    };
-    const onTripIdChanged = () => {
+    const syncTripId = () => {
       const id = localStorage.getItem("TripID");
       setActiveTripId(id ? Number(id) : null);
     };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "TripID") syncTripId();
+      if (e.key === "isLogin") setIsLogin(localStorage.getItem("isLogin") === "true");
+    };
+    const onTripIdChanged = () => syncTripId();
+    const syncLogin = () => setIsLogin(localStorage.getItem("isLogin") === "true");
+
     window.addEventListener("storage", onStorage);
     window.addEventListener("TripIDChanged", onTripIdChanged as EventListener);
+    window.addEventListener("LoginStateChanged", syncLogin as EventListener);
+    window.addEventListener("focus", () => {
+      syncTripId();
+      syncLogin();
+    });
+
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("TripIDChanged", onTripIdChanged as EventListener);
+      window.removeEventListener("LoginStateChanged", syncLogin as EventListener);
+      window.removeEventListener("focus", () => {});
     };
   }, []);
 
-  // ไม่ล็อกอิน → ส่งกลับ trip-chat
+  // ไม่ล็อกอิน → ส่งกลับ trip-chat (ถ้าไม่มี TripID แขวนอยู่)
   useEffect(() => {
-    if (!isLogin) navigate("/trip-chat", { replace: true });
+    const hasTrip = !!localStorage.getItem("TripID");
+    if (!isLogin && !hasTrip) navigate("/trip-chat", { replace: true });
   }, [isLogin, navigate]);
 
   // ===== Data states =====
@@ -196,6 +202,9 @@ const TripItinerary: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [userCondition, setUserCondition] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // ===== Boot flag เพื่อกัน error ช่วงเริ่มต้น =====
+  const [booted, setBooted] = useState(false);
 
   // ===== Per-day edit state =====
   const [editingDay, setEditingDay] = useState<number | null>(null);
@@ -246,6 +255,7 @@ const TripItinerary: React.FC = () => {
   // ===== refreshAll: โหลด Trip → ใช้ Con_id ดึง Condition (มี race guard) =====
   const refreshAll = useCallback(
     async (tripId: number) => {
+      if (!tripId) return;
       setLoading(true);
       const myReqId = ++reqIdRef.current;
       try {
@@ -262,47 +272,60 @@ const TripItinerary: React.FC = () => {
       } catch (err) {
         if (reqIdRef.current === myReqId) {
           console.error("Error refreshing data:", err);
-          msg.error("โหลดข้อมูลทริปล้มเหลว");
+          // โชว์ error เฉพาะหลังบูตแล้ว (กัน error ชั่วคราวช่วงกำลังหา TripID)
+          if (booted) msg.error("โหลดข้อมูลทริปล้มเหลว");
         }
       } finally {
         if (reqIdRef.current === myReqId) setLoading(false);
       }
     },
-    [msg, userIdNum]
+    [msg, userIdNum, booted]
   );
 
-  useEffect(() => {
-    if (activeTripId) refreshAll(activeTripId);
-  }, [activeTripId, refreshAll]);
-
-  // ===== Fetch trips + auto-select/redirect =====
+  // ===== Fetch trips + auto-select/redirect (TripID เป็น source of truth) =====
   const fetchTripsForUser = useCallback(async () => {
-    if (!userIdNum || !isLogin) return;
-    try {
-      const allConditions = await GetAllConditions();
-      const userConditions = allConditions.filter((c: any) => Number(c.User_id) === Number(userIdNum));
-      const conditionIds = userConditions.map((c: any) => Number(c.ID));
+    if (!userIdNum || !isLogin) {
+      setBooted(true);
+      return;
+    }
 
-      const allTrips = await GetAllTrips();
-      const userTrips = allTrips.filter((t: any) => conditionIds.includes(Number(t.Con_id)));
+    const lsTripId = Number(localStorage.getItem("TripID") || 0);
+
+    try {
+      const [allConditions, allTrips] = await Promise.all([GetAllConditions(), GetAllTrips()]);
+      const userConditions = allConditions.filter((c: any) => Number(c.User_id) === Number(userIdNum));
+      const conditionIds = new Set(userConditions.map((c: any) => Number(c.ID)));
+
+      const userTrips = allTrips.filter((t: any) => conditionIds.has(Number(t.Con_id)));
       setTrips(userTrips);
 
-      if (userTrips.length === 0) {
-        localStorage.removeItem("TripID");
-        window.dispatchEvent(new Event("TripIDChanged"));
-        navigate("/trip-chat", { replace: true });
+      // 1) ถ้ามี TripID ใน localStorage (เช่น เพิ่งสร้างใหม่) → โหลดอันนี้ก่อน
+      if (lsTripId) {
+        if (!activeTripId || Number(activeTripId) !== lsTripId) setActiveTrip(lsTripId);
+        await refreshAll(lsTripId);
+        setBooted(true);
         return;
       }
 
-      const firstId = Number(userTrips[0].ID);
-      const activeExistsInList = userTrips.some((t) => Number(t.ID ?? -1) === Number(activeTripId));
-
-      if (!activeTripId || !activeExistsInList) {
-        setActiveTrip(firstId);
-        await refreshAll(firstId);
+      // 2) ไม่มี TripID แต่มีทริป → เลือกอันแรก
+      if (userTrips.length > 0) {
+        const firstId = Number(userTrips[0].ID);
+        const activeExistsInList = userTrips.some((t) => Number(t.ID ?? -1) === Number(activeTripId));
+        const chosen = !activeTripId || !activeExistsInList ? firstId : Number(activeTripId);
+        if (!activeTripId || !activeExistsInList) setActiveTrip(chosen);
+        await refreshAll(chosen);
+        setBooted(true);
+        return;
       }
+
+      // 3) ไม่มีจริง ๆ → ล้าง TripID แล้วกลับหน้า chat
+      localStorage.removeItem("TripID");
+      window.dispatchEvent(new Event("TripIDChanged"));
+      setBooted(true);
+      navigate("/trip-chat", { replace: true });
     } catch (err) {
       console.error("Error fetching user trips:", err);
+      setBooted(true);
     }
   }, [userIdNum, isLogin, activeTripId, setActiveTrip, refreshAll, navigate]);
 
@@ -310,7 +333,12 @@ const TripItinerary: React.FC = () => {
     fetchTripsForUser();
   }, [fetchTripsForUser]);
 
-  // ===== Group + sort by PathIndex (ต้องมาก่อน start/end edit เพราะใช้ในนั้น) =====
+  // ⛔️ เอา effect นี้ออกเพื่อกันยิง refreshAll ซ้อนด้วย TripID เก่า
+  // useEffect(() => {
+  //   if (activeTripId) refreshAll(activeTripId);
+  // }, [activeTripId, refreshAll]);
+
+  // ===== Group + sort by PathIndex =====
   const groupedByDay = useMemo(() => {
     const map = (trip?.ShortestPaths ?? []).reduce((acc, curr) => {
       const day = curr.Day ?? 0;
@@ -324,7 +352,7 @@ const TripItinerary: React.FC = () => {
     return map;
   }, [trip]);
 
-  // ===== Edit toggle per day (ประกาศก่อนใช้ใน switchTripWithGuard) =====
+  // ===== Edit toggle per day =====
   const startEditDay = (day: number) => {
     const base = groupedByDay[day] ?? [];
     setEditedData((prev) => ({ ...prev, [day]: deepClone(base) }));
@@ -335,12 +363,12 @@ const TripItinerary: React.FC = () => {
     setEditedData({});
   };
 
-  // ===== เปลี่ยนทริปแบบมี Guard เมื่อมีการแก้ไขค้าง =====
+  // ===== เปลี่ยนทริปแบบมี Guard =====
   const switchTripWithGuard = useCallback(
     (tripId: number) => {
-      const doSwitch = () => {
+      const doSwitch = async () => {
         setActiveTrip(tripId);
-        refreshAll(tripId);
+        await refreshAll(tripId);
         if (typeof window !== "undefined") {
           window.requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -357,17 +385,17 @@ const TripItinerary: React.FC = () => {
           cancelText: "อยู่ต่อ",
           onOk: () => {
             endEditDay();
-            doSwitch();
+            void doSwitch();
           },
         });
         return;
       }
-      doSwitch();
+      void doSwitch();
     },
     [editingDay, modal, setActiveTrip, refreshAll, endEditDay]
   );
 
-  // ===== Unsaved guard (ออกหน้า/สลับแท็บ) =====
+  // ===== Unsaved guard =====
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (editingDay !== null) {
@@ -494,11 +522,10 @@ const TripItinerary: React.FC = () => {
 
       await refreshAll(TripIDLS);
 
-      // ✅ รีเฟรชทั้งหน้าเมื่อบันทึกเสร็จ
+      // ✅ รีเฟรชทั้งหน้าเมื่อบันทึกเสร็จ (คงไว้ตามของเดิม)
       setTimeout(() => {
         window.location.reload();
       }, 600);
-
     } catch (e: any) {
       msg.error(e?.message || "บันทึกไม่สำเร็จ");
     } finally {
@@ -506,7 +533,6 @@ const TripItinerary: React.FC = () => {
       endEditDay();
     }
   };
-
 
   // ===== Suggestions =====
   const getPrevNext = (day: number, index: number, record: ShortestpathInterface) => {
@@ -692,9 +718,9 @@ const TripItinerary: React.FC = () => {
 
   const groupedCodes = useMemo(
     () =>
-    (Object.values(groupedByDay)
-      .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
-      .filter(Boolean) as string[]),
+      (Object.values(groupedByDay)
+        .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
+        .filter(Boolean) as string[]),
     [groupedByDay]
   );
 
@@ -724,66 +750,66 @@ const TripItinerary: React.FC = () => {
               items={[
                 ...(isLogin
                   ? [
-                    {
-                      key: "overview",
-                      label: "Overview",
-                      children: (
-                        <>
-                          {trips.length > 0 ? (
-                            trips.map((t, idx) => {
-                              const idNum = Number(t.ID);
-                              const isActive = idNum === Number(activeTripId);
-                              const hasReviewed = reviewedTripIds.has(idNum);
-                              return (
-                                <div key={t.ID ?? idx}>
-                                  <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
-                                    <div className="itin-cardrow-text">
-                                      <p
-                                        className="title"
-                                        style={{ cursor: "pointer" }}
-                                        onClick={() => switchTripWithGuard(idNum)}
-                                      >
-                                        {idx + 1} - {t.Name}
-                                      </p>
-                                    </div>
-                                    <div className="itin-cardrow-right">
-                                      {!hasReviewed && (
-                                        <Tooltip title="ให้คะแนนทริป">
+                      {
+                        key: "overview",
+                        label: "Overview",
+                        children: (
+                          <>
+                            {trips.length > 0 ? (
+                              trips.map((t, idx) => {
+                                const idNum = Number(t.ID);
+                                const isActive = idNum === Number(activeTripId);
+                                const hasReviewed = reviewedTripIds.has(idNum);
+                                return (
+                                  <div key={t.ID ?? idx}>
+                                    <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
+                                      <div className="itin-cardrow-text">
+                                        <p
+                                          className="title"
+                                          style={{ cursor: "pointer" }}
+                                          onClick={() => switchTripWithGuard(idNum)}
+                                        >
+                                          {idx + 1} - {t.Name}
+                                        </p>
+                                      </div>
+                                      <div className="itin-cardrow-right">
+                                        {!hasReviewed && (
+                                          <Tooltip title="ให้คะแนนทริป">
+                                            <button
+                                              type="button"
+                                              className="btn-icon rate"
+                                              aria-label="Rate trip"
+                                              onClick={() => {
+                                                if (!isActive) switchTripWithGuard(idNum);
+                                                openRateModal();
+                                              }}
+                                            >
+                                              <StarFilled />
+                                            </button>
+                                          </Tooltip>
+                                        )}
+                                        <Tooltip title="ลบ">
                                           <button
                                             type="button"
-                                            className="btn-icon rate"
-                                            aria-label="Rate trip"
-                                            onClick={() => {
-                                              if (!isActive) switchTripWithGuard(idNum);
-                                              openRateModal();
-                                            }}
+                                            className="btn-icon danger"
+                                            aria-label="Delete trip"
+                                            onClick={() => confirmDeleteTrip(t)}
                                           >
-                                            <StarFilled />
+                                            <DeleteOutlined />
                                           </button>
                                         </Tooltip>
-                                      )}
-                                      <Tooltip title="ลบ">
-                                        <button
-                                          type="button"
-                                          className="btn-icon danger"
-                                          aria-label="Delete trip"
-                                          onClick={() => confirmDeleteTrip(t)}
-                                        >
-                                          <DeleteOutlined />
-                                        </button>
-                                      </Tooltip>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <p>No trips found.</p>
-                          )}
-                        </>
-                      ),
-                    } as const,
-                  ]
+                                );
+                              })
+                            ) : (
+                              <p>No trips found.</p>
+                            )}
+                          </>
+                        ),
+                      } as const,
+                    ]
                   : []),
                 {
                   key: "details",
