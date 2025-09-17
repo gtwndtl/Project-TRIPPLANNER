@@ -45,11 +45,7 @@ const DEFAULT_N_TOP = 40;
 
 // ===== util: ดึงรูปจากแลนด์มาร์ก =====
 const getPlaceImage = (p?: Partial<LandmarkInterface> | null) =>
-  (p as any)?.ThumbnailURL ||
-  (p as any)?.CoverUrl ||
-  (p as any)?.ImageUrl ||
-  (p as any)?.Photos?.[0]?.Url ||
-  "/images/place-placeholder.jpg";
+  p?.ThumbnailURL;
 
 // ===== Types (ภายในไฟล์นี้)
 type GuestActivity = { day: number; startTime: string; endTime: string; description: string };
