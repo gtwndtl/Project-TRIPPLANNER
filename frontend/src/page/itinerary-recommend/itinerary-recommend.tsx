@@ -24,7 +24,7 @@ import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 
 import "./itinerary-print.css";
 import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
-import MapRoute from "../../component/map-route/map-route";
+import MapRoute from "../../component/map/mini-map";
 
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
 

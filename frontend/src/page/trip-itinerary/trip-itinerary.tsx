@@ -17,7 +17,6 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import "./trip-itinerary.css";
-import MapRoute from "../../component/map-route/map-route";
 import {
   GetTripById,
   GetLandmarksAndRestuarantforEdit,
@@ -41,6 +40,7 @@ import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 import RateReviewModal from "../../component/review/review";
 import { useUserId } from "../../hooks/useUserId";
 import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
+import MiniMap from "../../component/map/mini-map";
 
 type PlaceKind = "landmark" | "restaurant" | "accommodation";
 const SP_TABLE_NAME = "shortestpaths";
@@ -332,6 +332,7 @@ const TripItinerary: React.FC = () => {
   useEffect(() => {
     fetchTripsForUser();
   }, [fetchTripsForUser]);
+  
 
   // ⛔️ เอา effect นี้ออกเพื่อกันยิง refreshAll ซ้อนด้วย TripID เก่า
   // useEffect(() => {
@@ -828,7 +829,7 @@ const TripItinerary: React.FC = () => {
                         </div>
                       ))}
                       <div className="no-print" style={mapCardStyle}>
-                        <MapRoute />
+                        <MiniMap />
                       </div>
                     </>
                   ),

@@ -16,7 +16,7 @@ import { Button, Empty, Spin, message, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 
 import TripItineraryPrintSheet from "../../component/itinerary-print/itinerary-print";
-import MapRoute from "../map-route/map-route";
+import MapRoute from "../map/mini-map";
 
 // ===== LocalStorage keys from guest mode =====
 const LOCAL_GUEST_TRIP_PLAN_TEXT = "guest_trip_plan_text";

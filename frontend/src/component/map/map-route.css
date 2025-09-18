@@ -1,0 +1,205 @@
+/* ========= THEME ========= */
+:root{
+  --mr-height: 72vh;
+  --mr-gap: 16px;
+
+  --mr-surface: #ffffff;
+  --mr-surface-soft: #fafbff;
+  --mr-veil: rgba(255,255,255,0.9);
+  --mr-border: #e6e8f0;
+  --mr-text: #0f172a;
+  --mr-text-sub: #64748b;
+  --mr-primary: #1677ff;
+  --mr-primary-weak: #e8f1ff;
+  --mr-shadow: 0 10px 26px rgba(20, 24, 40, 0.06);
+
+  --mr-radius-lg: 14px;
+  --mr-radius-md: 12px;
+  --mr-radius-sm: 10px;
+}
+
+/* ========= CONTAINER ========= */
+.mr-root{
+  height: var(--mr-height);
+  height: 735px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-border);
+  border-radius: var(--mr-radius-lg);
+  box-shadow: var(--mr-shadow);
+  overflow: hidden;
+  display: flex;
+}
+
+.mr-layout{
+  display: flex;
+  gap: var(--mr-gap);
+  padding: var(--mr-gap);
+  flex: 1 1 auto;
+  min-height: 0; /* ให้ลูกยืดเต็ม */
+  background:
+    radial-gradient(1200px 1200px at -10% -20%, #f7faff 0%, transparent 50%) no-repeat,
+    radial-gradient(900px 900px at 110% 120%, #f7fbff 0%, transparent 50%) no-repeat;
+}
+
+/* ========= MAP (80%) ========= */
+.mr-map{
+  position: relative;
+  flex: 4 1 0; /* ~80% */
+  min-width: 0;
+  min-height: 0;
+  background: var(--mr-surface-soft);
+  border: 1px solid var(--mr-border);
+  border-radius: var(--mr-radius-md);
+  overflow: hidden;
+  box-shadow: var(--mr-shadow);
+}
+
+.mr-map-canvas{
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+
+/* Day switch */
+.mr-topbar{
+  position: absolute;
+  top: 12px; left: 50%; transform: translateX(-50%);
+  z-index: 20;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--mr-veil);
+  border: 1px solid var(--mr-border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  box-shadow: var(--mr-shadow);
+  backdrop-filter: saturate(160%) blur(8px);
+}
+.mr-day-pill{
+  margin: 0 4px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #fff;
+}
+
+/* Selected pin detail */
+.mr-detail{
+  position: absolute; left: 12px; bottom: 12px; z-index: 18;
+  width: 320px; max-width: calc(100% - 24px);
+  background: var(--mr-veil);
+  border: 1px solid var(--mr-border);
+  border-radius: var(--mr-radius-md);
+  padding: 12px;
+  box-shadow: var(--mr-shadow);
+  backdrop-filter: saturate(160%) blur(8px);
+  color: var(--mr-text);
+}
+.mr-detail-title{ font-weight: 800; margin-bottom: 6px; }
+.mr-detail-row{
+  display: grid; grid-template-columns: 80px 1fr;
+  gap: 6px; font-size: 13px; margin: 5px 0;
+}
+.mr-detail-key{ color: var(--mr-text-sub); }
+
+/* Map error */
+.mr-error{
+  position: absolute; right: 12px; bottom: 12px; z-index: 25;
+  background: #fff1f0; color: #cf1322;
+  border: 1px solid #ffd1cd; border-radius: 10px;
+  padding: 6px 10px; font-size: 12px;
+  box-shadow: var(--mr-shadow);
+}
+
+/* ========= LIST (20%) ========= */
+.mr-sidepanel{
+  position: relative; flex: 1 1 0; /* ~20% */
+  min-width: 280px; max-width: 420px; height: 100%;
+  display: flex; flex-direction: column;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-border);
+  border-radius: var(--mr-radius-md);
+  overflow: hidden;
+  box-shadow: var(--mr-shadow);
+}
+
+.mr-sidepanel-header{
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--mr-border);
+  background: linear-gradient(180deg, #fff, #fafcff);
+}
+.mr-sidepanel-title{
+  font-weight: 800; font-size: 14px; color: var(--mr-text);
+  display: flex; align-items: center; gap: 6px;
+}
+.mr-sidepanel-info{ color: var(--mr-text-sub); }
+
+.mr-sidepanel-body{
+  flex: 1 1 auto; min-height: 0;
+  padding: 10px;
+  overflow: auto;
+  background: #fff;
+}
+
+/* Pin list */
+.mr-pin-list{ list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.mr-pin-item{
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px;
+  padding: 10px; border: 1px solid var(--mr-border);
+  border-radius: var(--mr-radius-sm);
+  background: #fff;
+  transition: transform .08s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+  cursor: pointer;
+}
+.mr-pin-item:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(16, 24, 40, .06);
+  border-color: #dfe3ee;
+  background: #fbfdff;
+}
+.mr-pin-item.is-active{
+  border-color: var(--mr-primary);
+  box-shadow: 0 0 0 3px var(--mr-primary-weak);
+  background: #f5f9ff;
+}
+.mr-pin-item-main{ display: flex; align-items: center; gap: 10px; }
+.mr-pin-index{
+  width: 24px; height: 24px; border-radius: 999px;
+  display: grid; place-items: center;
+  font: 700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  background: var(--mr-primary); color: #fff;
+  box-shadow: 0 2px 6px rgba(22,119,255,.28);
+}
+.mr-pin-text{ display: grid; gap: 2px; }
+.mr-pin-name{ font-weight: 700; color: var(--mr-text); line-height: 1.15; }
+.mr-pin-sub{ font-size: 12px; color: var(--mr-text-sub); }
+
+/* Footer button area */
+.mr-sidepanel-footer{
+  padding: 12px;
+  border-top: 1px solid var(--mr-border);
+  background: linear-gradient(180deg, rgba(255,255,255,.6), #fff);
+}
+
+/* ========= SCROLLBARS (สุภาพ) ========= */
+.mr-sidepanel-body::-webkit-scrollbar{ width: 10px; }
+.mr-sidepanel-body::-webkit-scrollbar-thumb{
+  background: #e7ecf5; border-radius: 999px; border: 2px solid #fff;
+}
+.mr-sidepanel-body:hover::-webkit-scrollbar-thumb{ background: #d9e2f0; }
+
+/* ========= RESPONSIVE ========= */
+@media (max-width: 900px){
+  .mr-layout{ flex-direction: column; }
+  .mr-map{ flex: none; height: 56vh; }
+  .mr-sidepanel{ flex: none; min-width: 0; height: 38vh; }
+  .mr-topbar{ left: 12px; transform: none; }
+  .mr-detail{ width: calc(100% - 24px); }
+}
+
+/* ========= (OPTIONAL) ปรับปุ่ม Ant ให้ดูกลม/เบา ========= */
+.ant-btn{
+  border-radius: 999px;
+}
+.ant-btn-primary{
+  box-shadow: 0 6px 18px rgba(22,119,255,.22);
+}
+.ant-tag.mr-day-pill{
+  border-color: #edf0f7;
+  background: #fff;
+}

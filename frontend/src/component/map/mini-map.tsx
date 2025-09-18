@@ -8,10 +8,11 @@ import {
 } from "../../services/https";
 import { useUserId } from "../../hooks/useUserId";
 
-import { Button, Tag, Space } from "antd";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { Button, Tag, Space, Modal, Tooltip } from "antd";
+import { LeftOutlined, RightOutlined, FullscreenOutlined, CloseOutlined } from "@ant-design/icons";
 
-import "./map-route.css";
+import "./mini-map.css";
+import MapRoute from "./map-route";
 
 // ===== Types (backend) =====
 type ShortestPath = {
@@ -30,7 +31,7 @@ type GuestActivity = {
 };
 type RouteData = {
   start_name?: string;
-  accommodation?: { id?: string; [k: string]: any };
+  accommodation?: { id?: string;[k: string]: any };
   trip_plan_by_day?: Array<{ day: number; plan: Array<any> }>;
   paths?: Array<{ from: string; to: string; distance_km?: number }>;
   [k: string]: any;
@@ -150,17 +151,17 @@ const hideAllUi = (map: any) => {
       if (typeof x.visible === "function") {
         try {
           x.visible(false);
-        } catch {}
+        } catch { }
       }
       if (typeof x.display === "function") {
         try {
           x.display(false);
-        } catch {}
+        } catch { }
       }
       if (typeof x.enable === "function") {
         try {
           x.enable(false);
-        } catch {}
+        } catch { }
       }
     };
     Object.keys(ui).forEach((k) => tryHide(ui[k]));
@@ -168,7 +169,7 @@ const hideAllUi = (map: any) => {
     tryHide(map?.Ref?.Scale);
     tryHide(map?.Ref?.UTMGrid);
     tryHide(map?.Ref?.Graticule);
-  } catch {}
+  } catch { }
 };
 
 // ===== reconstruct ToCode ตาม activities (guest) =====
@@ -302,13 +303,199 @@ function findLatLonNameForCode(routeData: RouteData, rawCode: string): { lat: nu
   return null;
 }
 
-const MapRoute: React.FC = () => {
-  const userIdNum = useUserId();
-  const isPreviewOnly = !userIdNum;
-
+/** ==================== MapView (ตัวแผนที่ + marker) ==================== */
+const MapView: React.FC<{
+  points: PlacePoint[];
+  loading?: boolean;
+  error?: string | null;
+  onClickOpenRoute: (pts: PlacePoint[]) => void;
+  /** ใช้สำหรับกันเปิดตอนลาก */
+  onMouseDown?: (e: React.MouseEvent) => void;
+  onMouseUp?: (e: React.MouseEvent) => void;
+  /** สไตล์เพิ่มเติมเมื่ออยู่ใน Modal */
+  fitParent?: boolean;
+  /** เมื่ออยู่ใน Modal ให้โชว์ปุ่มปิด */
+  showClose?: boolean;
+  onRequestClose?: () => void;
+}> = ({ points, loading, error, onClickOpenRoute, onMouseDown, onMouseUp, fitParent, showClose, onRequestClose }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!LONGDO_API_KEY) return;
+
+    loadLongdoScript(LONGDO_API_KEY)
+      .then(() => {
+        if (cancelled) return;
+        if (!containerRef.current || !window.longdo) return;
+        const map = new window.longdo.Map({ placeholder: containerRef.current });
+        hideAllUi(map);
+        map.zoom(12, true);
+        mapRef.current = map;
+        setMapReady(true);
+      })
+      .catch(() => {
+        /* แสดง error ที่ชั้นบนแล้ว */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const safeFitToPoints = (map: any, points: PlacePoint[]) => {
+    if (!points.length) return;
+    try {
+      if (typeof map.bound === "function") {
+        map.bound(
+          points.map((p) => ({ lon: p.lon, lat: p.lat })),
+          { animate: true, padding: 56 }
+        );
+        return;
+      }
+    } catch { }
+    const el = containerRef.current;
+    const width = Math.max(el?.clientWidth ?? 640, 64);
+    const height = Math.max(el?.clientHeight ?? 360, 64);
+    const PADDING = 56;
+
+    const project = (lon: number, lat: number) => {
+      const sin = Math.sin((lat * Math.PI) / 180);
+      const x0 = ((lon + 180) / 360) * 256;
+      const y0 = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * 256;
+      return [x0, y0] as const;
+    };
+
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    let minLon = Infinity,
+      maxLon = -Infinity,
+      minLat = Infinity,
+      maxLat = -Infinity;
+
+    for (const p of points) {
+      const [x0, y0] = project(p.lon, p.lat);
+      if (x0 < minX) minX = x0;
+      if (x0 > maxX) maxX = x0;
+      if (y0 < minY) minY = y0;
+      if (y0 > maxY) maxY = y0;
+      if (p.lon < minLon) minLon = p.lon;
+      if (p.lon > maxLon) maxLon = p.lon;
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+    }
+
+    const dx0 = Math.max(maxX - minX, 1e-6);
+    const dy0 = Math.max(maxY - minY, 1e-6);
+
+    const usableW = Math.max(width - PADDING * 2, 64);
+    const usableH = Math.max(height - PADDING * 2, 64);
+
+    const zx = Math.log2(usableW / dx0);
+    const zy = Math.log2(usableH / dy0);
+    let z = Math.min(zx, zy);
+    if (!Number.isFinite(z)) z = 14;
+    z = Math.max(3, Math.min(18, Math.floor(z)));
+
+    const centerLon = (minLon + maxLon) / 2;
+    const centerLat = (minLat + maxLat) / 2;
+
+    map.location({ lon: centerLon, lat: centerLat }, true);
+    map.zoom(z, true);
+  };
+
+  const applyMarkers = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !window.longdo) return;
+
+    map.Overlays.clear();
+    if (!points.length) return;
+
+    points.forEach((p, i) => {
+      const marker = new window.longdo.Marker(
+        { lon: p.lon, lat: p.lat },
+        {
+          title: `${i + 1}. ${p.name || p.code}`,
+          popup: {
+            html: `<div style="padding:6px 8px;max-width:220px;">
+              <div style="font-weight:700;margin-bottom:2px;">${p.name || p.code}</div>
+              <div style="color:#64748b;font-size:12px;">${p.code} • Day ${p.day}</div>
+            </div>`,
+          },
+        }
+      );
+      map.Overlays.add(marker);
+    });
+
+    safeFitToPoints(map, points);
+  }, [points]);
+
+  useEffect(() => {
+    if (mapReady) applyMarkers();
+  }, [mapReady, points, applyMarkers]);
+
+  // ให้แผนที่จัด layout ใหม่เมื่อ container เปลี่ยนขนาด (เช่นเปิด modal)
+  useEffect(() => {
+    if (!mapReady) return;
+    const id = setTimeout(() => {
+      try {
+        const map = mapRef.current;
+        if (map) {
+          safeFitToPoints(map, points);
+        }
+      } catch { }
+    }, 300);
+    return () => clearTimeout(id);
+  }, [mapReady, points]);
+
+  return (
+    <div className={`map-route ${fitParent ? "fit-parent" : ""}`}>
+      {showClose && (
+        <button
+          className="map-close-btn"
+          aria-label="Close"
+          onClick={onRequestClose}
+          type="button"
+        >
+          <CloseOutlined />
+        </button>
+      )}
+
+      {error && (
+        <div className="map-error">
+          <small>⚠ {error}</small>
+        </div>
+      )}
+
+      <div
+        className="map-wrapper"
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        title="คลิกเพื่อเปิดเส้นทางใน Google Maps"
+        role="button"
+        aria-label="คลิกเพื่อเปิดเส้นทางใน Google Maps"
+        style={fitParent ? { flex: 1, minHeight: 0 } : undefined}
+        onDoubleClick={() => onClickOpenRoute(points)}
+      >
+        <div ref={containerRef} className="map-canvas" aria-busy={loading} />
+        <div className="map-hover-overlay" aria-hidden="true">
+          <div className="overlay-label">เปิดเส้นทางใน Google Maps</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** ==================== MiniMap (โหลดข้อมูล + คุมวัน + Modal Fullscreen) ==================== */
+const MiniMap: React.FC = () => {
+  const userIdNum = useUserId();
+  const isPreviewOnly = !userIdNum;
+
+  const [mapModalOpen, setMapModalOpen] = useState(false);
 
   const [tripId, setTripId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -343,7 +530,7 @@ const MapRoute: React.FC = () => {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  // กันเปิดตอนลาก
+  // กันเปิดตอนลาก (คลิกธรรมดาเปิด Google Route)
   const downRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     downRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
@@ -551,126 +738,6 @@ const MapRoute: React.FC = () => {
     };
   }, [buildPointsViaApi, buildPointsViaGuestLocal, dayFilter]);
 
-  // init map
-  useEffect(() => {
-    let cancelled = false;
-    if (!LONGDO_API_KEY) {
-      setError("โปรดตั้งค่า Longdo API Key");
-      return;
-    }
-    loadLongdoScript(LONGDO_API_KEY)
-      .then(() => {
-        if (cancelled) return;
-        if (!containerRef.current || !window.longdo) return;
-        const map = new window.longdo.Map({ placeholder: containerRef.current });
-        hideAllUi(map);
-        map.zoom(12, true);
-        mapRef.current = map;
-        setMapReady(true);
-      })
-      .catch((err) => setError(err?.message || "โหลด Longdo ไม่สำเร็จ"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // fit view
-  const safeFitToPoints = (map: any, points: PlacePoint[]) => {
-    if (!points.length) return;
-    try {
-      if (typeof map.bound === "function") {
-        map.bound(
-          points.map((p) => ({ lon: p.lon, lat: p.lat })),
-          { animate: true, padding: 56 }
-        );
-        return;
-      }
-    } catch {}
-    const el = containerRef.current;
-    const width = Math.max(el?.clientWidth ?? 640, 64);
-    const height = Math.max(el?.clientHeight ?? 360, 64);
-    const PADDING = 56;
-
-    const project = (lon: number, lat: number) => {
-      const sin = Math.sin((lat * Math.PI) / 180);
-      const x0 = ((lon + 180) / 360) * 256;
-      const y0 = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * 256;
-      return [x0, y0] as const;
-    };
-
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity;
-    let minLon = Infinity,
-      maxLon = -Infinity,
-      minLat = Infinity,
-      maxLat = -Infinity;
-
-    for (const p of points) {
-      const [x0, y0] = project(p.lon, p.lat);
-      if (x0 < minX) minX = x0;
-      if (x0 > maxX) maxX = x0;
-      if (y0 < minY) minY = y0;
-      if (y0 > maxY) maxY = y0;
-      if (p.lon < minLon) minLon = p.lon;
-      if (p.lon > maxLon) maxLon = p.lon;
-      if (p.lat < minLat) minLat = p.lat;
-      if (p.lat > maxLat) maxLat = p.lat;
-    }
-
-    const dx0 = Math.max(maxX - minX, 1e-6);
-    const dy0 = Math.max(maxY - minY, 1e-6);
-
-    const usableW = Math.max(width - PADDING * 2, 64);
-    const usableH = Math.max(height - PADDING * 2, 64);
-
-    const zx = Math.log2(usableW / dx0);
-    const zy = Math.log2(usableH / dy0);
-    let z = Math.min(zx, zy);
-    if (!Number.isFinite(z)) z = 14;
-    z = Math.max(3, Math.min(18, Math.floor(z)));
-
-    const centerLon = (minLon + maxLon) / 2;
-    const centerLat = (minLat + maxLat) / 2;
-
-    map.location({ lon: centerLon, lat: centerLat }, true);
-    map.zoom(z, true);
-  };
-
-  // render markers
-  const applyMarkers = useCallback(() => {
-    const map = mapRef.current;
-    if (!map || !window.longdo) return;
-
-    map.Overlays.clear();
-
-    const pts = dayFilter == null ? [] : pointsByDay[dayFilter] || [];
-    if (pts.length === 0) return;
-
-    pts.forEach((p, i) => {
-      const marker = new window.longdo.Marker(
-        { lon: p.lon, lat: p.lat },
-        {
-          title: `${i + 1}. ${p.name || p.code}`,
-          popup: {
-            html: `<div style="padding:6px 8px;max-width:220px;">
-              <div style="font-weight:700;margin-bottom:2px;">${p.name || p.code}</div>
-              <div style="color:#64748b;font-size:12px;">${p.code} • Day ${p.day}</div>
-            </div>`,
-          },
-        }
-      );
-      map.Overlays.add(marker);
-    });
-
-    safeFitToPoints(map, pts);
-  }, [pointsByDay, dayFilter]);
-
-  useEffect(() => {
-    if (mapReady) applyMarkers();
-  }, [mapReady, dayFilter, pointsByDay, applyMarkers]);
-
   // day nav + keyboard
   const canPrev = dayFilter != null && days.indexOf(dayFilter) > 0;
   const canNext = dayFilter != null && days.indexOf(dayFilter) < days.length - 1;
@@ -694,51 +761,86 @@ const MapRoute: React.FC = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext]);
 
+  const pointsToday = dayFilter == null ? [] : pointsByDay[dayFilter] || [];
+
+  // ให้แผนที่ใน modal จัด layout ใหม่หลังเปิด
+  useEffect(() => {
+    if (mapModalOpen) {
+      const t = setTimeout(() => {
+        window.dispatchEvent(new Event("resize"));
+      }, 350);
+      return () => clearTimeout(t);
+    }
+  }, [mapModalOpen]);
+
   return (
-    <div className="map-route">
-      <div className="map-toolbar">
-        <Space align="center" size={6}>
-          <Button
-            size="small"
-            shape="circle"
-            icon={<LeftOutlined />}
-            onClick={goPrev}
-            disabled={!canPrev}
-            aria-label="วันก่อนหน้า"
-          />
-          <Tag className="day-pill">{dayFilter == null ? "วันที่ —" : `วันที่ ${dayFilter}`}</Tag>
-          <Button
-            size="small"
-            shape="circle"
-            icon={<RightOutlined />}
-            onClick={goNext}
-            disabled={!canNext}
-            aria-label="วันถัดไป"
-          />
-        </Space>
+    <>
+      <div className="map-route">
+        <div className="map-toolbar">
+          <div className="map-toolbar-day">
+            <Space align="center" size={6}>
+              <Button
+                size="small"
+                shape="circle"
+                icon={<LeftOutlined />}
+                onClick={goPrev}
+                disabled={!canPrev}
+                aria-label="วันก่อนหน้า"
+              />
+              <Tag className="day-pill">{dayFilter == null ? "วันที่ —" : `วันที่ ${dayFilter}`}</Tag>
+              <Button
+                size="small"
+                shape="circle"
+                icon={<RightOutlined />}
+                onClick={goNext}
+                disabled={!canNext}
+                aria-label="วันถัดไป"
+              />
+            </Space>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <Tooltip title="Fullscreen">
+              <Button
+                size="small"
+                icon={<FullscreenOutlined />}
+                onClick={() => setMapModalOpen(true)}
+              >
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* แผนที่ขนาดมินิในการ์ด */}
+        <MapView
+          points={pointsToday}
+          loading={loading}
+          error={error}
+          onClickOpenRoute={openGoogleRoute}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+        />
       </div>
 
-      {error && (
-        <div className="map-error">
-          <small>⚠ {error}</small>
-        </div>
-      )}
-
-      <div
-        className="map-wrapper"
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        title="คลิกเพื่อเปิดเส้นทางใน Google Maps"
-        role="button"
-        aria-label="คลิกเพื่อเปิดเส้นทางใน Google Maps"
+      {/* Modal 80% ของหน้าจอ */}
+      <Modal
+        className="fullscreen-map-modal"
+        open={mapModalOpen}
+        onCancel={() => setMapModalOpen(false)}
+        footer={null}
+        centered
+        destroyOnClose
+        width="80vw"
+        styles={{ body: { padding: 0, height: "80vh" } }}
       >
-        <div ref={containerRef} id="longdo-map" className="map-canvas" aria-busy={loading} />
-        <div className="map-hover-overlay" aria-hidden="true">
-          <div className="overlay-label">เปิดเส้นทางใน Google Maps</div>
+        <div style={{ display: "flex", flexDirection: "column", height: "80vh", minHeight: 0 }}>
+          {/* แผนที่ใน modal (ยืดเต็ม 80vh) */}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <MapRoute />
+          </div>
         </div>
-      </div>
-    </div>
+      </Modal>
+    </>
   );
 };
 
-export default MapRoute;
+export default MiniMap;

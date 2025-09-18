@@ -1,0 +1,200 @@
+.map-route {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Toolbar: center day (map-toolbar-day) + fullscreen right ---------- */
+.map-route .map-toolbar{
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;   /* ซ้าย (ว่าง) | กลาง | ขวา */
+  align-items: center;
+  gap: 10px;
+}
+
+/* กล่อง map-toolbar-day ให้อยู่คอลัมน์กลางและกึ่งกลางจริง ๆ */
+.map-route .map-toolbar .map-toolbar-day{
+  grid-column: 2;
+  justify-self: center;
+  width: 100%;
+  max-width: 360px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--mr-veil, #fff);
+  border: 1px solid var(--mr-border, #e6ebf5);
+  box-shadow: var(--mr-shadow, 0 4px 18px rgba(0,0,0,0.06));
+  backdrop-filter: saturate(160%) blur(8px);
+}
+
+/* กล่องปุ่ม fullscreen (div ขวาสุดใน JSX) ให้อยู่คอลัมน์ขวาและชิดขวา */
+.map-route .map-toolbar > div:last-child{
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 0 !important;  /* ตัด inline style ที่เป็น margin-left:auto */
+}
+
+/* ปุ่มลูกศร (โทน ghost กลม + ring ตอน hover) */
+.map-route .nav-btn{
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--divider, #e6ebf5);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.04));
+  cursor: pointer;
+  transition: background .2s, border-color .2s, box-shadow .2s, transform .02s, opacity .2s;
+}
+.map-route .nav-btn:hover{
+  background: #fbfdff;
+  border-color: var(--line-strong, #cfd8ea);
+  box-shadow: 0 0 0 4px var(--accent-06, rgba(22,119,255,.12));
+}
+.map-route .nav-btn:active{ transform: translateY(1px); }
+.map-route .nav-btn:disabled{
+  opacity: .45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ไอคอนในปุ่ม */
+.map-route .nav-btn svg{
+  width: 18px;
+  height: 18px;
+  stroke: var(--text, #111827);
+  stroke-width: 2.25;
+  fill: none;
+}
+
+/* ป้าย Day แบบ pill */
+.map-route .day-pill{
+  margin: 0 4px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #fff;
+}
+
+/* แอนิเมชันเวลาสลับวัน */
+.map-route .day-text{ animation: fade-swap .18s ease; }
+@keyframes fade-swap{
+  from{ opacity: 0; transform: translateY(2px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- แผนที่ ---------- */
+.map-route .map-canvas,
+#longdo-map{
+  width: 100%;
+  height: var(--map-h, 300px);
+  background: var(--surface, #fff);
+  border: 1px solid var(--divider, #e6ebf5);
+  border-radius: var(--radius, 12px);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.04));
+  overflow: hidden;
+}
+
+/* error/คำเตือน */
+.map-route .map-error{
+  margin: -2px 0 6px;
+  color: #b91c1c;
+  text-align: center;
+  font-size: 12.5px;
+}
+
+/* Responsive */
+@media (max-width: 1024px){
+  .map-route .map-canvas,
+  #longdo-map{ height: 320px; }
+}
+@media (max-width: 640px){
+  .map-route .map-canvas,
+  #longdo-map{ height: 280px; }
+}
+
+/* Print: ซ่อนแผนที่ */
+@media print{
+  .map-route{ display: none !important; }
+}
+
+/* wrapper ครอบ canvas เพื่อทำเอฟเฟกต์ hover */
+.map-route .map-wrapper{
+  position: relative;
+  border: 1px solid var(--divider, #e6ebf5);
+  border-radius: var(--radius, 12px);
+  overflow: hidden;
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.04));
+}
+
+/* แคนวาสของ Longdo */
+.map-route .map-canvas{
+  width: 100%;
+  height: var(--map-h, 360px); /* ปรับได้จากภายนอกด้วย :root --map-h */
+}
+
+/* ชั้นทับเมื่อ hover: ทำให้มืด + แสดงป้าย */
+.map-route .map-hover-overlay{
+  pointer-events: none;  /* ไม่บังการคลิกที่ตัวแมพ */
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(17,20,24,.04);
+  opacity: 0;
+  transition: opacity .18s ease, background .18s ease;
+}
+.map-route .map-wrapper:hover .map-hover-overlay{
+  opacity: 1;
+  background: rgba(17,20,24,.35);
+}
+
+/* ป้ายข้อความตรงกลาง */
+.map-route .overlay-label{
+  color: #fff;
+  font-weight: 800;
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.3);
+  backdrop-filter: blur(2px);
+  user-select: none;
+}
+
+/* ===== Modal 80% หน้าจอ ===== */
+.fullscreen-map-modal .ant-modal-content{
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.fullscreen-map-modal .ant-modal-body{ padding: 0; }
+
+/* MapView ใช้เต็มพาเรนต์เมื่อ fitParent */
+.map-route.fit-parent{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.map-close-btn{
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 10;
+  border: 0;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.map-close-btn:hover{ background: rgba(0,0,0,.75); }
