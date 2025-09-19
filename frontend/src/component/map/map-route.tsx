@@ -16,14 +16,8 @@ import {
 } from "@ant-design/icons";
 
 import "./map-route.css";
+import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 
-// ===== Types (backend) =====
-type ShortestPath = {
-  ID?: number | string;
-  TripID?: number | string;
-  Day?: number;
-  ToCode?: string | null;
-};
 
 // ===== Types (guest local) =====
 type GuestActivity = {
@@ -355,7 +349,7 @@ const MapRoute: React.FC = () => {
 
         if (id) {
           const allResp: any = await GetAllShortestPaths();
-          const all: ShortestPath[] = Array.isArray(allResp) ? allResp : allResp?.data ?? [];
+          const all: ShortestpathInterface[] = Array.isArray(allResp) ? allResp : allResp?.data ?? [];
           const rows = (all || []).filter((r) => Number(r.TripID) === Number(id) && r.ToCode);
 
           // buildPointsViaApi (inline)
@@ -756,7 +750,7 @@ const MapRoute: React.FC = () => {
                     <div className="mr-pin-item-main">
                       <span className="mr-pin-index">{idx + 1}</span>
                       <div className="mr-pin-text">
-                        <div className="mr-pin-name">{p.name || p.code}</div>
+                        <div className="mr-pin-name">{p.name}</div>
                         <div className="mr-pin-sub">
                           {p.kind === "A" ? "ที่พัก" : p.kind === "R" ? "ร้านอาหาร" : "สถานที่ท่องเที่ยว"}
                         </div>
