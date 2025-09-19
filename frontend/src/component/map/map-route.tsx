@@ -7,19 +7,20 @@ import {
   GetRestaurantById,
 } from "../../services/https";
 
-import { Button, Tag, Space, Empty } from "antd";
+import { Button, Tag, Space, Empty, Spin, Tooltip } from "antd";
 import {
   LeftOutlined,
   RightOutlined,
   DeleteOutlined,
   EnvironmentOutlined,
+  ShareAltOutlined,
+  BarsOutlined,
+  DeploymentUnitOutlined,
 } from "@ant-design/icons";
 
 import "./map-route.css";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 
-
-// ===== Types (guest local) =====
 type GuestActivity = {
   day: number;
   startTime: string;
@@ -28,7 +29,7 @@ type GuestActivity = {
 };
 type RouteData = {
   start_name?: string;
-  accommodation?: { id?: string; [k: string]: any };
+  accommodation?: { id?: string;[k: string]: any };
   trip_plan_by_day?: Array<{ day: number; plan: Array<any> }>;
   paths?: Array<{ from: string; to: string; distance_km?: number }>;
   [k: string]: any;
@@ -55,6 +56,8 @@ declare global {
 }
 
 const LONGDO_API_KEY = "f278aaef2d456a4e85e80715f7f32ef9";
+const LONGDO_SCRIPT_SRC = (key: string) =>
+  `https://api.longdo.com/map3/?key=${encodeURIComponent(key)}`;
 
 // ===== Helpers =====
 const readTripId = (): number | null => {
@@ -78,7 +81,7 @@ function loadLongdoScript(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const s = document.createElement("script");
     s.id = id;
-    s.src = `https://api.longdo.com/map/?key=${encodeURIComponent(apiKey)}`;
+    s.src = LONGDO_SCRIPT_SRC(apiKey);
     (s as any)._loaded = false;
     s.async = true;
     s.defer = true;
@@ -137,11 +140,11 @@ const pickLatLon = (obj: any): { lat: number; lon: number } | null => {
   return null;
 };
 
-/** --- SMART name resolver (รองรับหลายคีย์ + ซ้อนลึก) --- */
+/** --- SMART name resolver --- */
 const nameOf = (obj: any): string => {
   const fields = [
-    "Name","name","title","Title","placeName","PlaceName","displayName","DisplayName",
-    "label","Label","NameTH","thName","THName","shortName","ShortName"
+    "Name", "name", "title", "Title", "placeName", "PlaceName", "displayName", "DisplayName",
+    "label", "Label", "NameTH", "thName", "THName", "shortName", "ShortName"
   ];
   const getDirect = (o: any): string | null => {
     if (!o || typeof o !== "object") return null;
@@ -153,20 +156,13 @@ const nameOf = (obj: any): string => {
     }
     return null;
   };
-
   const direct = getDirect(obj);
   if (direct) return direct;
-
-  const likelyChildren = [
-    "data","detail","place","accommodation","landmark","restaurant",
-    "Location","loc","geo","info","meta"
-  ];
+  const likelyChildren = ["data", "detail", "place", "accommodation", "landmark", "restaurant", "Location", "loc", "geo", "info", "meta"];
   for (const key of likelyChildren) {
     const got = getDirect(obj?.[key]);
     if (got) return got;
   }
-
-  // depth-limited DFS
   const dfs = (o: any, depth = 0): string | null => {
     if (!o || typeof o !== "object" || depth > 3) return null;
     const d = getDirect(o);
@@ -177,7 +173,6 @@ const nameOf = (obj: any): string => {
     }
     return null;
   };
-
   return dfs(obj) ?? "-";
 };
 
@@ -191,7 +186,6 @@ function reconstructGuestSps(activities: GuestActivity[], routeData: RouteData |
   for (const act of activities) {
     const dayPlan = routeData.trip_plan_by_day?.find((d: any) => d.day === act.day);
     const currentIndex = dayPlanIndices[act.day] ?? 0;
-
     const isCheckIn = /เช็คอิน/.test(act.description);
     const isCheckout = /เช็คเอาท์/.test(act.description);
     const isRest = /พักผ่อน/.test(act.description);
@@ -215,7 +209,7 @@ function reconstructGuestSps(activities: GuestActivity[], routeData: RouteData |
   return out;
 }
 
-// ===== หา lat/lon จาก routeData ที่ "มีอยู่แล้ว" (ไม่ยิง API) =====
+// ===== หา lat/lon จาก routeData =====
 function findPlaceObjInPlans(routeData: RouteData, code: string): any | null {
   const plans = routeData.trip_plan_by_day || [];
   for (const d of plans) {
@@ -300,6 +294,7 @@ function findLatLonNameForCode(routeData: RouteData, rawCode: string): { lat: nu
 
 const MapRoute: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const routeResultRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
 
@@ -309,13 +304,17 @@ const MapRoute: React.FC = () => {
   const [dayFilter, setDayFilter] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ใช้ index เป็นตัวอ้างอิง selection เสมอ (กันรายการซ้ำ)
+  // โหมดเส้นทาง
+  const [routeMode, setRouteMode] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
+
+  // selection
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   const markersRef = useRef<Map<string, any>>(new Map());
+  const transientMarkerRef = useRef<any | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
 
-  // race guard
   const reqIdRef = useRef(0);
 
   const openGoogleRoute = useCallback((pts: PlacePoint[]) => {
@@ -334,7 +333,7 @@ const MapRoute: React.FC = () => {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  // ===== ดึงข้อมูล (API ก่อน, ล้มเหลวค่อย fallback local) =====
+  // ===== ดึงข้อมูล =====
   useEffect(() => {
     let mounted = true;
     const myReq = ++reqIdRef.current;
@@ -352,7 +351,6 @@ const MapRoute: React.FC = () => {
           const all: ShortestpathInterface[] = Array.isArray(allResp) ? allResp : allResp?.data ?? [];
           const rows = (all || []).filter((r) => Number(r.TripID) === Number(id) && r.ToCode);
 
-          // buildPointsViaApi (inline)
           const resultByDay: Record<number, PlacePoint[]> = {};
           const cache = new Map<string, PlacePoint>();
           for (const r of rows) {
@@ -383,7 +381,7 @@ const MapRoute: React.FC = () => {
               kind: kindChar,
               idNum,
               day: d,
-              name: nameOf(fetched),           // ชื่อจาก API
+              name: nameOf(fetched),
               lat: ll.lat,
               lon: ll.lon,
               readonly: true,
@@ -435,7 +433,7 @@ const MapRoute: React.FC = () => {
               kind,
               idNum,
               day: d,
-              name: info.name || code,        // <<< ชื่อจาก guest (ผ่าน nameOf ที่อัปเกรดแล้ว)
+              name: info.name || code,
               lat: info.lat,
               lon: info.lon,
               readonly: true,
@@ -462,7 +460,6 @@ const MapRoute: React.FC = () => {
 
     run();
 
-    // อัปเดตเมื่อ TripID เปลี่ยนใน localStorage
     const refreshOnStorage = (e: StorageEvent) => {
       if (e.key === "TripID") run();
     };
@@ -520,7 +517,7 @@ const MapRoute: React.FC = () => {
         map.bound(pts.map((p) => ({ lon: p.lon, lat: p.lat })), { animate: true, padding: 56 });
         return;
       }
-    } catch {}
+    } catch { }
     // fallback
     const project = (lon: number, lat: number) => {
       const s = Math.sin((lat * Math.PI) / 180);
@@ -566,7 +563,7 @@ const MapRoute: React.FC = () => {
     map.zoom(z, true);
   }, []);
 
-  /** เลือกเฉพาะรายการตาม index (กันกรณี code/day ซ้ำ) */
+  /** เลือกจาก index */
   const handleSelectByIndex = useCallback(
     (idx: number) => {
       const p = pointsToday[idx];
@@ -574,13 +571,11 @@ const MapRoute: React.FC = () => {
 
       setSelectedIdx(idx);
 
-      // scroll ให้เห็นรายการที่เลือก
       const li = listRef.current?.querySelector<HTMLLIElement>(
         `li[data-key="${p.code}-${p.day}-${idx}"]`
       );
       li?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
-      // โฟกัส marker + popup เฉพาะตัวเดียว
       try {
         const map = mapRef.current;
         if (map) {
@@ -588,24 +583,56 @@ const MapRoute: React.FC = () => {
           map.zoom(16, true);
         }
         const key = `${p.code}-${p.day}-${idx}`;
-        const marker = markersRef.current.get(key);
-        if (marker && window.longdo?.Event?.trigger) {
-          window.longdo.Event.trigger(marker, "click");
+
+        if (routeMode) {
+          if (transientMarkerRef.current) {
+            map.Overlays.remove(transientMarkerRef.current);
+            transientMarkerRef.current = null;
+          }
+          const marker = new window.longdo.Marker(
+            { lon: p.lon, lat: p.lat },
+            {
+              title: `${idx + 1}. ${p.name || p.code}`,
+              clickable: true,
+              popup: {
+                html: `<div style="padding:6px 8px;max-width:240px;">
+                         <div style="font-weight:700;margin-bottom:2px;">${p.name || p.code}</div>
+                         <div style="color:#64748b;font-size:12px;">${p.code} • Day ${p.day}</div>
+                       </div>`,
+              },
+            }
+          );
+          transientMarkerRef.current = marker;
+          map.Overlays.add(marker);
+          if (window.longdo?.Event?.trigger) {
+            window.longdo.Event.trigger(marker, "click");
+          }
+        } else {
+          const marker = markersRef.current.get(key);
+          if (marker && window.longdo?.Event?.trigger) {
+            window.longdo.Event.trigger(marker, "click");
+          }
         }
-      } catch {}
+      } catch { }
     },
-    [pointsToday]
+    [pointsToday, routeMode]
   );
 
-  // วาด marker (ล้างและวาดใหม่)
+  // วาดหมุด (โหมดปกติ)
   const applyMarkers = useCallback(() => {
     const map = mapRef.current;
     if (!map || !window.longdo) return;
 
     markersRef.current.clear();
-    map.Overlays.clear();
 
-    if (!pointsToday.length) return;
+    if (!pointsToday.length) {
+      if (!routeMode) map.Overlays.clear();
+      return;
+    }
+
+    if (routeMode) return;
+
+    map.Overlays.clear();
 
     pointsToday.forEach((p, i) => {
       const marker = new window.longdo.Marker(
@@ -623,18 +650,61 @@ const MapRoute: React.FC = () => {
       );
       markersRef.current.set(`${p.code}-${p.day}-${i}`, marker);
       map.Overlays.add(marker);
-
-      // คลิก marker → เลือกเฉพาะตัวเดียว
       window.longdo.Event.bind(marker, "click", () => handleSelectByIndex(i));
     });
 
-    // fit หลังวางหมุดครบ
     fitMapToPoints(pointsToday);
-  }, [pointsToday, fitMapToPoints, handleSelectByIndex]);
+  }, [pointsToday, fitMapToPoints, handleSelectByIndex, routeMode]);
 
   useEffect(() => {
     if (mapReady) applyMarkers();
   }, [mapReady, applyMarkers]);
+
+  // สร้างเส้นทาง (เมื่อเปิดโหมด route)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map || !window.longdo) return;
+
+    // ลบหมุดชั่วคราว (ถ้ามี)
+    if (transientMarkerRef.current) {
+      try { map.Overlays.remove(transientMarkerRef.current); } catch { }
+      transientMarkerRef.current = null;
+    }
+
+    if (!routeMode) {
+      // โหมดหมุดปกติ
+      applyMarkers();
+      return;
+    }
+
+    // ---- เริ่มโหมดเส้นทาง: ซ่อนหมุดปกติทั้งหมดก่อน ----
+    try {
+      map.Overlays.clear();
+    } catch { }
+    markersRef.current.clear();
+    // -----------------------------------------------
+
+    if (!pointsToday.length) {
+      try { map.Route?.clear?.(); } catch { }
+      return;
+    }
+
+    setRouteLoading(true);
+    try {
+      if (map.Route?.clear) map.Route.clear();
+      if (map.Route?.placeholder && routeResultRef.current) {
+        map.Route.placeholder(routeResultRef.current);
+      }
+      pointsToday.forEach((p) => map.Route.add({ lon: p.lon, lat: p.lat }));
+      map.Route?.search?.();
+      try { map.Route?.auto?.(true); } catch { }
+      const t = setTimeout(() => setRouteLoading(false), 800);
+      return () => clearTimeout(t);
+    } catch {
+      setRouteLoading(false);
+    }
+  }, [mapReady, routeMode, pointsToday, applyMarkers]);
+
 
   // day nav
   const canPrev = dayFilter != null && days.indexOf(dayFilter) > 0;
@@ -659,12 +729,23 @@ const MapRoute: React.FC = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext]);
 
-  // เข้า/เปลี่ยนวัน/จำนวนหมุดเปลี่ยน → fit อีกครั้ง
+  // 🔁 เมื่อ "เปลี่ยนวัน" → รีเซ็ตเป็นโหมดหมุดปกติเสมอ + เคลียร์เส้นทาง/หมุดชั่วคราว กันบั๊ก
   useEffect(() => {
     if (!mapReady) return;
+    setRouteMode(false);              // ปิดโหมดเส้นทาง
+    setRouteLoading(false);           // ปิดสถานะโหลดเส้นทาง
+
+    const map = mapRef.current;
+    if (map?.Route?.clear) map.Route.clear();      // เคลียร์เส้นทางเดิม
+    if (transientMarkerRef.current) {              // ลบหมุดชั่วคราว (ถ้ามี)
+      try { map.Overlays.remove(transientMarkerRef.current); } catch { }
+      transientMarkerRef.current = null;
+    }
+
+    // วาดหมุดของวันใหม่ + จัดมุมมอง
     const t = setTimeout(() => fitMapToPoints(pointsToday), 120);
     return () => clearTimeout(t);
-  }, [mapReady, dayFilter, pointsToday.length, fitMapToPoints]);
+  }, [dayFilter, mapReady, fitMapToPoints, pointsToday.length]);
 
   // เมื่อเปลี่ยนวัน → รีเซ็ต selection และเลื่อนลิสต์ไปบนสุด
   useEffect(() => {
@@ -672,18 +753,43 @@ const MapRoute: React.FC = () => {
     if (listRef.current) listRef.current.scrollTop = 0;
   }, [dayFilter]);
 
-  // ลิสต์ & ปุ่มเส้นทาง
   const listPoints = pointsToday;
-  const canOpenRoute = pointsToday.length > 0;
+  const canOpenRoute = pointsToday.length > 1;
 
   const selectedPin = selectedIdx != null ? pointsToday[selectedIdx] : null;
+  const toggleRouteMode = () => {
+    const map = mapRef.current;
+    setRouteMode((prev) => {
+      const next = !prev;
+
+      if (next) {
+        // กำลัง "เข้า" โหมดเส้นทาง → ซ่อนหมุดปกติทั้งหมดทันที
+        try {
+          map?.Overlays?.clear?.();
+        } catch { }
+        markersRef.current.clear();
+        // ไม่สร้างหมุดใหม่ที่นี่ ปล่อยให้ useEffect(routeMode) สร้างเส้นทางอย่างเดียว
+      } else {
+        // กำลัง "ออก" โหมดเส้นทาง → ล้างหมุดชั่วคราว + ล้างเส้นทาง แล้ววาดหมุดปกติ
+        try {
+          map?.Route?.clear?.();
+        } catch { }
+        if (transientMarkerRef.current) {
+          try { map?.Overlays?.remove?.(transientMarkerRef.current); } catch { }
+          transientMarkerRef.current = null;
+        }
+        applyMarkers();
+      }
+      return next;
+    });
+  };
+
 
   return (
     <div className="mr-root">
       <div className="mr-layout">
-        {/* ซ้าย: Map 80% */}
+        {/* ซ้าย: Map */}
         <div className="mr-map">
-          {/* Top-center Day Switch */}
           <div className="mr-topbar">
             <Space align="center" size={8}>
               <Button size="small" shape="circle" icon={<LeftOutlined />} onClick={goPrev} disabled={!canPrev} />
@@ -692,7 +798,22 @@ const MapRoute: React.FC = () => {
             </Space>
           </div>
 
-          <div ref={containerRef} className="mr-map-canvas" aria-busy={loading} />
+          <div ref={containerRef} className="mr-map-canvas" aria-busy={loading || routeLoading} />
+
+          {routeMode && (
+            <div className="mr-route-result">
+              <div className="mr-route-result-head">
+                <DeploymentUnitOutlined /> <span>รายละเอียดเส้นทาง</span>
+                {routeLoading && (
+                  <span className="mr-route-loading">
+                    <Spin size="small" /> กำลังคำนวณเส้นทาง...
+                  </span>
+                )}
+              </div>
+              <div ref={routeResultRef} className="mr-route-result-body" />
+            </div>
+          )}
+
           {error && (
             <div className="mr-error">
               <small>⚠ {error}</small>
@@ -732,8 +853,22 @@ const MapRoute: React.FC = () => {
           )}
         </div>
 
-        {/* ขวา: List 20% */}
+        {/* ขวา: List */}
         <aside className="mr-sidepanel">
+          <div className="mr-sidepanel-header">
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Button
+                type={routeMode ? "default" : "primary"}
+                block
+                icon={routeMode ? <BarsOutlined /> : <ShareAltOutlined />}
+                onClick={toggleRouteMode}
+                disabled={!canOpenRoute}
+              >
+                {routeMode ? "แสดงหมุดตามเดิม" : "แสดงเส้นทาง (Longdo Route)"}
+              </Button>
+            </Space>
+          </div>
+
           <div className="mr-sidepanel-body">
             {listPoints.length === 0 ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="ยังไม่มีหมุดสำหรับวันนี้" />
@@ -761,17 +896,17 @@ const MapRoute: React.FC = () => {
               </ul>
             )}
           </div>
-
-          <div className="mr-sidepanel-footer">
-            <Button
-              type="primary"
-              block
-              icon={<EnvironmentOutlined />}
-              onClick={() => openGoogleRoute(pointsToday)}
-              disabled={!canOpenRoute}
-            >
-              เปิดเส้นทางวันนี้ใน Google Maps
-            </Button>
+          <div className="mr-sidepanel-header">
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Button
+                block
+                icon={<EnvironmentOutlined />}
+                onClick={() => openGoogleRoute(pointsToday)}
+                disabled={!canOpenRoute}
+              >
+                เปิดเส้นทางวันนี้ใน Google Maps
+              </Button>
+            </Space>
           </div>
         </aside>
       </div>
