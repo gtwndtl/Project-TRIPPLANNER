@@ -198,3 +198,88 @@
   .tx-title { font-size: 28px; }
   .tx-sub { font-size: 14px; }
 }
+
+
+/* ============ Skeleton Loader (Trip Explore) ============ */
+@keyframes tx-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-skel-block,
+  .tx-skel-line,
+  .tx-skel-chip,
+  .tx-skel-avatar,
+  .tx-skel-btn,
+  .tx-skel-media,
+  .tx-skel-dotline {
+    animation: none !important;
+  }
+}
+
+/* การ์ดระหว่างโหลด */
+.tx-skel-card {
+  pointer-events: none;
+}
+
+/* พื้นฐาน shimmer */
+.tx-skel-block,
+.tx-skel-line,
+.tx-skel-chip,
+.tx-skel-avatar,
+.tx-skel-btn,
+.tx-skel-media,
+.tx-skel-dotline {
+  background: linear-gradient(
+    90deg,
+    rgba(148,163,184,0.16) 0%,
+    rgba(148,163,184,0.28) 40%,
+    rgba(148,163,184,0.16) 80%
+  );
+  background-size: 200% 100%;
+  animation: tx-shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+/* รูป */
+.tx-skel-media {
+  width: 100%;
+  height: 100%;
+  border-radius: 0; /* ให้เต็มกรอบรูป */
+}
+
+/* เส้นข้อความ */
+.tx-skel-line { height: 12px; }
+.tx-skel-line-sm { height: 10px; width: 70%; }
+.tx-skel-line-md { height: 14px; width: 60%; }
+.tx-skel-line-lg { height: 16px; width: 80%; }
+.tx-skel-user { height: 12px; width: 120px; }
+
+/* ชิปเรตติ้ง */
+.tx-skel-chip {
+  width: 64px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+/* จุดบอก "วัน" */
+.tx-skel-dotline {
+  width: 72px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+/* อวตาร */
+.tx-skel-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+
+/* ปุ่มดูรายละเอียด */
+.tx-skel-btn {
+  width: 86px;
+  height: 28px;
+  border-radius: 8px;
+}

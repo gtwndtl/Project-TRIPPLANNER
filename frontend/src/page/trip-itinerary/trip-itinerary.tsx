@@ -35,7 +35,7 @@ import type { TripInterface } from "../../interfaces/Trips";
 import type { ShortestpathInterface } from "../../interfaces/Shortestpath";
 import type { DefaultOptionType } from "antd/es/select";
 import Select from "antd/es/select";
-import { Button, Empty, message, Modal, Spin, Tabs, Tooltip } from "antd";
+import { Button, Empty, message, Modal, Skeleton, Spin, Tabs, Tooltip } from "antd";
 import { usePlaceNamesHybrid } from "../../hooks/usePlaceNamesAuto";
 import RateReviewModal from "../../component/review/review";
 import { useUserId } from "../../hooks/useUserId";
@@ -119,6 +119,73 @@ const SummaryIcon: React.FC<{
   return <EnvironmentOutlined className="icon" />;
 };
 
+/** ===== Skeletons ===== */
+const ItinSidebarSkeleton: React.FC = () => (
+  <div style={{ padding: "10px 12px 12px" }}>
+    <Skeleton
+      active
+      title={{ width: "60%" }}
+      paragraph={false}
+      style={{ margin: "6px 4px 10px" }}
+    />
+    {/* Tabs header */}
+    <div style={{ display: "flex", gap: 8, margin: "6px 4px 14px" }}>
+      <Skeleton.Button active block style={{ height: 36 }} />
+      <Skeleton.Button active block style={{ height: 36 }} />
+    </div>
+    {/* Summary rows */}
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div key={i} className="itin-cardrow">
+        <Skeleton.Avatar active shape="square" size={42} />
+        <div style={{ flex: 1 }}>
+          <Skeleton
+            active
+            title={{ width: "50%" }}
+            paragraph={{ rows: 1, width: "30%" }}
+            style={{ margin: 0 }}
+          />
+        </div>
+      </div>
+    ))}
+    {/* Mini map card placeholder */}
+    <div style={{ ...mapCardStyle, padding: 0, overflow: "hidden" }}>
+      <Skeleton.Node active style={{ width: "100%", height: 180 }} />
+    </div>
+  </div>
+);
+
+const ItinDaySkeleton: React.FC<{ rows?: number; titleWidth?: string | number }> = ({
+  rows = 3,
+  titleWidth = "120px",
+}) => (
+  <section style={{ background: "var(--surface)", border: "1px solid var(--divider)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-sm)", padding: "8px 10px 12px", marginBottom: 16 }}>
+    {/* day header pill + buttons */}
+    <div className="itin-day-header" style={{ marginBottom: 6 }}>
+      <Skeleton.Button active style={{ width: titleWidth, height: 40, borderRadius: 12 }} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <Skeleton.Button active style={{ width: 88, height: 40, borderRadius: 12 }} />
+        <Skeleton.Button active style={{ width: 88, height: 40, borderRadius: 12 }} />
+      </div>
+    </div>
+
+    {/* activity rows */}
+    {Array.from({ length: rows }).map((_, i) => (
+      <div key={i} className="itin-cardrow">
+        <Skeleton.Avatar active shape="square" size={42} />
+        <div style={{ flex: 1 }}>
+          <Skeleton
+            active
+            title={{ width: "60%" }}
+            paragraph={{ rows: 2, width: ["40%", "30%"] as any }}
+            style={{ margin: 0 }}
+          />
+        </div>
+      </div>
+    ))}
+  </section>
+);
+
+
 const TripItinerary: React.FC = () => {
   const navigate = useNavigate();
   const [msg, contextHolder] = message.useMessage();
@@ -186,7 +253,7 @@ const TripItinerary: React.FC = () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("TripIDChanged", onTripIdChanged as EventListener);
       window.removeEventListener("LoginStateChanged", syncLogin as EventListener);
-      window.removeEventListener("focus", () => {});
+      window.removeEventListener("focus", () => { });
     };
   }, []);
 
@@ -332,7 +399,7 @@ const TripItinerary: React.FC = () => {
   useEffect(() => {
     fetchTripsForUser();
   }, [fetchTripsForUser]);
-  
+
 
   // ⛔️ เอา effect นี้ออกเพื่อกันยิง refreshAll ซ้อนด้วย TripID เก่า
   // useEffect(() => {
@@ -719,9 +786,9 @@ const TripItinerary: React.FC = () => {
 
   const groupedCodes = useMemo(
     () =>
-      (Object.values(groupedByDay)
-        .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
-        .filter(Boolean) as string[]),
+    (Object.values(groupedByDay)
+      .flatMap((rows) => rows.flatMap((sp) => [sp.FromCode, sp.ToCode]))
+      .filter(Boolean) as string[]),
     [groupedByDay]
   );
 
@@ -739,225 +806,238 @@ const TripItinerary: React.FC = () => {
       {modalContextHolder}
       <div className="itin-container">
         <aside className="itin-summary no-print">
-          <div className="itin-title-row">
-            <p className="itin-page-title">
-              {trip?.Name || "Trip"} (<span className="nowrap">{trip?.Days ?? "—"} วัน</span>)
-            </p>
-          </div>
-          <div className="itin-tabs">
-            <Tabs
-              activeKey={tabKey}
-              onChange={onTabsChange}
-              items={[
-                ...(isLogin
-                  ? [
-                      {
-                        key: "overview",
-                        label: "Overview",
-                        children: (
-                          <>
-                            {trips.length > 0 ? (
-                              trips.map((t, idx) => {
-                                const idNum = Number(t.ID);
-                                const isActive = idNum === Number(activeTripId);
-                                const hasReviewed = reviewedTripIds.has(idNum);
-                                return (
-                                  <div key={t.ID ?? idx}>
-                                    <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
-                                      <div className="itin-cardrow-text">
-                                        <p
-                                          className="title"
-                                          style={{ cursor: "pointer" }}
-                                          onClick={() => switchTripWithGuard(idNum)}
-                                        >
-                                          {idx + 1} - {t.Name}
-                                        </p>
-                                      </div>
-                                      <div className="itin-cardrow-right">
-                                        {!hasReviewed && (
-                                          <Tooltip title="ให้คะแนนทริป">
+          {loading ? (
+            <ItinSidebarSkeleton />
+          ) : (
+            <>
+              <div className="itin-title-row">
+                <p className="itin-page-title">
+                  {trip?.Name || "Trip"} (<span className="nowrap">{trip?.Days ?? "—"} วัน</span>)
+                </p>
+              </div>
+              <div className="itin-tabs">
+                {/* ... ของเดิมทั้งหมดใน Tabs ... */}
+                <Tabs
+                  activeKey={tabKey}
+                  onChange={onTabsChange}
+                  items={[
+                    ...(isLogin
+                      ? [
+                        {
+                          key: "overview",
+                          label: "Overview",
+                          children: (
+                            <>
+                              {trips.length > 0 ? (
+                                trips.map((t, idx) => {
+                                  const idNum = Number(t.ID);
+                                  const isActive = idNum === Number(activeTripId);
+                                  const hasReviewed = reviewedTripIds.has(idNum);
+                                  return (
+                                    <div key={t.ID ?? idx}>
+                                      <div className={`itin-cardrow ${isActive ? "is-active" : ""}`}>
+                                        <div className="itin-cardrow-text">
+                                          <p
+                                            className="title"
+                                            style={{ cursor: "pointer" }}
+                                            onClick={() => switchTripWithGuard(idNum)}
+                                          >
+                                            {idx + 1} - {t.Name}
+                                          </p>
+                                        </div>
+                                        <div className="itin-cardrow-right">
+                                          {!hasReviewed && (
+                                            <Tooltip title="ให้คะแนนทริป">
+                                              <button
+                                                type="button"
+                                                className="btn-icon rate"
+                                                aria-label="Rate trip"
+                                                onClick={() => {
+                                                  if (!isActive) switchTripWithGuard(idNum);
+                                                  openRateModal();
+                                                }}
+                                              >
+                                                <StarFilled />
+                                              </button>
+                                            </Tooltip>
+                                          )}
+                                          <Tooltip title="ลบ">
                                             <button
                                               type="button"
-                                              className="btn-icon rate"
-                                              aria-label="Rate trip"
-                                              onClick={() => {
-                                                if (!isActive) switchTripWithGuard(idNum);
-                                                openRateModal();
-                                              }}
+                                              className="btn-icon danger"
+                                              aria-label="Delete trip"
+                                              onClick={() => confirmDeleteTrip(t)}
                                             >
-                                              <StarFilled />
+                                              <DeleteOutlined />
                                             </button>
                                           </Tooltip>
-                                        )}
-                                        <Tooltip title="ลบ">
-                                          <button
-                                            type="button"
-                                            className="btn-icon danger"
-                                            aria-label="Delete trip"
-                                            onClick={() => confirmDeleteTrip(t)}
-                                          >
-                                            <DeleteOutlined />
-                                          </button>
-                                        </Tooltip>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <p>No trips found.</p>
-                            )}
-                          </>
-                        ),
-                      } as const,
-                    ]
-                  : []),
-                {
-                  key: "details",
-                  label: "Details",
-                  children: (
-                    <>
-                      {summary.map((s, i) => (
-                        <div className="itin-cardrow" key={i}>
-                          <div className="itin-cardrow-icon">
-                            <SummaryIcon name={s.icon} />
+                                  );
+                                })
+                              ) : (
+                                <p>No trips found.</p>
+                              )}
+                            </>
+                          ),
+                        } as const,
+                      ]
+                      : []),
+                    {
+                      key: "details",
+                      label: "Details",
+                      children: (
+                        <>
+                          {summary.map((s, i) => (
+                            <div className="itin-cardrow" key={i}>
+                              <div className="itin-cardrow-icon">
+                                <SummaryIcon name={s.icon} />
+                              </div>
+                              <div className="itin-cardrow-text">
+                                <p className="title">{s.title}</p>
+                                <p className="sub">{s.subtitle}</p>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="no-print" style={mapCardStyle}>
+                            <MiniMap />
                           </div>
-                          <div className="itin-cardrow-text">
-                            <p className="title">{s.title}</p>
-                            <p className="sub">{s.subtitle}</p>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="no-print" style={mapCardStyle}>
-                        <MiniMap />
-                      </div>
-                    </>
-                  ),
-                } as const,
-              ]}
-            />
-          </div>
+                        </>
+                      ),
+                    } as const,
+                  ]}
+                />
+              </div>
+            </>
+          )}
         </aside>
 
+
         <main className="itin-content no-print">
-          {loading && (
-            <div className="itin-loading">
-              <Spin />
-            </div>
-          )}
+          {loading ? (
+            <>
+              <ItinDaySkeleton rows={3} titleWidth={120} />
+              <ItinDaySkeleton rows={3} titleWidth={110} />
+              <ItinDaySkeleton rows={4} titleWidth={100} />
+            </>
+          ) : (
+            <>
+              {Object.entries(groupedByDay).map(([dayKey, activities]) => {
+                const dayNum = Number(dayKey);
+                const isEditingThisDay = editingDay === dayNum;
+                const rows = isEditingThisDay ? (editedData[dayNum] ?? activities) : activities;
 
-          {Object.entries(groupedByDay).map(([dayKey, activities]) => {
-            const dayNum = Number(dayKey);
-            const isEditingThisDay = editingDay === dayNum;
-            const rows = isEditingThisDay ? (editedData[dayNum] ?? activities) : activities;
-
-            return (
-              <section key={dayKey}>
-                <div
-                  className="itin-day-header"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <h2 className="itin-section-title" style={{ margin: 0 }}>
-                    {getDayHeaderText(dayNum)}
-                  </h2>
-                  <div className="button-edit-group">
-                    {isEditingThisDay ? (
-                      <>
-                        <Button
-                          className="btn-secondary"
-                          icon={<CloseOutlined />}
-                          onClick={endEditDay}
-                          disabled={savingDay === dayNum}
-                        >
-                          ยกเลิก
-                        </Button>
-                        <Button
-                          className="btn-secondary"
-                          type="primary"
-                          icon={<SaveOutlined />}
-                          onClick={() => handleSaveDay(dayNum)}
-                          style={{ marginLeft: 8 }}
-                          disabled={savingDay === dayNum}
-                          loading={savingDay === dayNum}
-                        >
-                          บันทึก
-                        </Button>
-                      </>
-                    ) : (
-                      <Button className="btn-secondary" icon={<EditOutlined />} onClick={() => startEditDay(dayNum)}>
-                        แก้ไข
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {rows.length === 0 ? (
-                  <div className="itin-empty-day">
-                    <Empty description="ยังไม่มีแผนสำหรับวันนี้" />
-                  </div>
-                ) : (
-                  rows.map((record, idx) => {
-                    const key = `${dayNum}:${idx}`;
-                    return (
-                      <div className="itin-cardrow" key={record.ID ?? key}>
-                        <div className="itin-cardrow-icon">
-                          <ItemIcon code={record.ToCode} />
-                        </div>
-
-                        <div className="itin-cardrow-text">
-                          <p className="title-itin">{renderDescNode(record.ActivityDescription)}</p>
-
-                          <p className="sub">
-                            {isEditingThisDay ? (
-                              <Select
-                                showSearch
-                                value={editedData[dayNum]?.[idx]?.ToCode ?? record.ToCode}
-                                onChange={(v) => handleLocationChange(dayNum, idx, v)}
-                                placeholder="เลือกสถานที่แนะนำตามเส้นทาง"
-                                options={rowOptions[key] ?? []}
-                                optionFilterProp="label"
-                                filterOption={(input, option) =>
-                                  (option?.label?.toString() ?? "").toLowerCase().includes(input.toLowerCase())
-                                }
-                                notFoundContent={renderNotFound(key)}
-                                loading={!!rowLoading[key]}
-                                onOpenChange={(open) => {
-                                  if (open) ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record));
-                                }}
-                                onFocus={() =>
-                                  ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record))
-                                }
-                                onClick={() =>
-                                  ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record))
-                                }
-                                style={{ minWidth: 360 }}
-                                dropdownMatchSelectWidth={false}
-                                disabled={savingDay === dayNum}
-                              />
-                            ) : (
-                              displayName(record.ToCode)
-                            )}
-                          </p>
-
-                          <p className="sub">
-                            {record.StartTime} - {record.EndTime}
-                          </p>
-                        </div>
+                return (
+                  <section key={dayKey}>
+                    <div
+                      className="itin-day-header"
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                    >
+                      <h2 className="itin-section-title" style={{ margin: 0 }}>
+                        {getDayHeaderText(dayNum)}
+                      </h2>
+                      <div className="button-edit-group">
+                        {isEditingThisDay ? (
+                          <>
+                            <Button
+                              className="btn-secondary"
+                              icon={<CloseOutlined />}
+                              onClick={endEditDay}
+                              disabled={savingDay === dayNum}
+                            >
+                              ยกเลิก
+                            </Button>
+                            <Button
+                              className="btn-secondary"
+                              type="primary"
+                              icon={<SaveOutlined />}
+                              onClick={() => handleSaveDay(dayNum)}
+                              style={{ marginLeft: 8 }}
+                              disabled={savingDay === dayNum}
+                              loading={savingDay === dayNum}
+                            >
+                              บันทึก
+                            </Button>
+                          </>
+                        ) : (
+                          <Button className="btn-secondary" icon={<EditOutlined />} onClick={() => startEditDay(dayNum)}>
+                            แก้ไข
+                          </Button>
+                        )}
                       </div>
-                    );
-                  })
-                )}
-              </section>
-            );
-          })}
-          <RateReviewModal
-            open={reviewOpen}
-            onCancel={closeRateModal}
-            onSubmit={handleSubmitReview}
-            loading={reviewSubmitting}
-            tripName={trip?.Name}
-          />
+                    </div>
+
+                    {rows.length === 0 ? (
+                      <div className="itin-empty-day">
+                        <Empty description="ยังไม่มีแผนสำหรับวันนี้" />
+                      </div>
+                    ) : (
+                      rows.map((record, idx) => {
+                        const key = `${dayNum}:${idx}`;
+                        return (
+                          <div className="itin-cardrow" key={record.ID ?? key}>
+                            <div className="itin-cardrow-icon">
+                              <ItemIcon code={record.ToCode} />
+                            </div>
+
+                            <div className="itin-cardrow-text">
+                              <p className="title-itin">{renderDescNode(record.ActivityDescription)}</p>
+
+                              <p className="sub">
+                                {isEditingThisDay ? (
+                                  <Select
+                                    showSearch
+                                    value={editedData[dayNum]?.[idx]?.ToCode ?? record.ToCode}
+                                    onChange={(v) => handleLocationChange(dayNum, idx, v)}
+                                    placeholder="เลือกสถานที่แนะนำตามเส้นทาง"
+                                    options={rowOptions[key] ?? []}
+                                    optionFilterProp="label"
+                                    filterOption={(input, option) =>
+                                      (option?.label?.toString() ?? "").toLowerCase().includes(input.toLowerCase())
+                                    }
+                                    notFoundContent={renderNotFound(key)}
+                                    loading={!!rowLoading[key]}
+                                    onOpenChange={(open) => {
+                                      if (open) ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record));
+                                    }}
+                                    onFocus={() =>
+                                      ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record))
+                                    }
+                                    onClick={() =>
+                                      ensureRowOptionsDebounced(() => void ensureRowOptions(dayNum, idx, record))
+                                    }
+                                    style={{ minWidth: 360 }}
+                                    dropdownMatchSelectWidth={false}
+                                    disabled={savingDay === dayNum}
+                                  />
+                                ) : (
+                                  displayName(record.ToCode)
+                                )}
+                              </p>
+
+                              <p className="sub">
+                                {record.StartTime} - {record.EndTime}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </section>
+                );
+              })}
+              <RateReviewModal
+                open={reviewOpen}
+                onCancel={closeRateModal}
+                onSubmit={handleSubmitReview}
+                loading={reviewSubmitting}
+                tripName={trip?.Name}
+              />
+            </>
+          )}
         </main>
+
 
         {trip && (
           <TripItineraryPrintSheet

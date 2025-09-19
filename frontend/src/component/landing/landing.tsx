@@ -130,6 +130,37 @@ const Landing: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [topTrips, setTopTrips] = useState<EnrichedReview[]>([]);
 
+
+  // ===== NEW: Skeleton for Journey Inspirations =====
+  const SkeletonInspireMosaic: React.FC = () => {
+    // ใช้ class mosaic-a,b,c,d เพื่อคงเลย์เอาต์เป๊ะกับของจริง
+    const cards = ["mosaic-a", "mosaic-b", "mosaic-c", "mosaic-d"];
+    return (
+      <div className="inspire-mosaic">
+        {cards.map((cls, i) => (
+          <article key={i} className={`inspire-card ${cls} is-skeleton`}>
+            {/* พื้นหลังสี่เหลี่ยมของภาพ */}
+            <div className="skeleton-bg" />
+            {/* ชิปเรตติ้งมุมขวาบน */}
+            <div className="inspire-rating">
+              <span className="inspire-chip skeleton-chip" />
+            </div>
+            {/* ผู้ใช้มุมบนซ้าย */}
+            <div className="inspire-user fixed">
+              <span className="skeleton-avatar" />
+              <span className="skeleton-line skeleton-line--sm" />
+            </div>
+            {/* ชื่อทริปด้านล่าง */}
+            <div className="inspire-info bottom">
+              <div className="skeleton-line skeleton-line--lg" />
+              <div className="skeleton-line skeleton-line--md" />
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  };
+
   // พรีโหลดรูป Hero หนึ่งครั้งต่อเซสชัน
   useEffect(() => {
     if (sessionStorage.getItem("HERO_PRELOADED_V1") !== "1") {
@@ -379,7 +410,7 @@ const Landing: React.FC = () => {
             </div>
           </section>
 
-          {/* ===== Journey Inspirations (คงเดิม) ===== */}
+{/* ===== Journey Inspirations ===== */}
           <section className="landing-inspire">
             <div className="landing-section-header">
               <h1 className="landing-section-title">Journey Inspirations from Travelers</h1>
@@ -388,7 +419,10 @@ const Landing: React.FC = () => {
               </p>
             </div>
 
-            {loading && <div className="landing-recs-state"><Spin /></div>}
+            {/* ✅ ใช้ Skeleton แทน Spinner */}
+            {loading && (
+              <SkeletonInspireMosaic />
+            )}
 
             {!loading && topTrips.length === 0 && (
               <div className="landing-recs-state"><Empty description="ยังไม่มีทริปแนะนำ" /></div>
@@ -407,7 +441,6 @@ const Landing: React.FC = () => {
 
                   const seed = seedForCard({ tripId, review, index: idx });
                   const color = pickColorFromSeed(seed);
-
                   const mosaicClass = ["mosaic-a", "mosaic-b", "mosaic-c", "mosaic-d"][idx % 4];
 
                   return (
@@ -422,22 +455,18 @@ const Landing: React.FC = () => {
                       <div className="inspire-cover">
                         <img className="inspire-cover-img" src={thumb} alt="" />
                       </div>
-
                       <div className="inspire-gradient" />
-
                       <div className="inspire-user fixed">
                         <Avatar size={28} style={{ backgroundColor: color, color: "#fff" }}>
                           {initials(userName)}
                         </Avatar>
                         <span className="inspire-username">{userName}</span>
                       </div>
-                      {/* Top-right rating */}
                       <div className="inspire-rating">
                         <Tooltip title={`${rate}/5`}>
                           <span className="inspire-chip rating"><StarFilled /> {rate}</span>
                         </Tooltip>
                       </div>
-
                       <div className="inspire-info bottom">
                         <h3 className="inspire-title">{title}</h3>
                       </div>

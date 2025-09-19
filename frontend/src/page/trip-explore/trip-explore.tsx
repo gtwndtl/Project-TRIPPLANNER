@@ -189,7 +189,7 @@ const TripExplore: React.FC = () => {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify(c));
       MEMO.data = c;
-    } catch {}
+    } catch { }
   };
   const readCache = (): CacheShape | null => {
     if (MEMO.data) return MEMO.data;
@@ -201,7 +201,7 @@ const TripExplore: React.FC = () => {
         MEMO.data = p;
         return p;
       }
-    } catch {}
+    } catch { }
     return null;
   };
   const isFresh = (t: number) => Date.now() - t < TTL_MS;
@@ -289,6 +289,49 @@ const TripExplore: React.FC = () => {
     navigate(`/itinerary/recommend/${tripId}`);
   };
 
+  // ===== Skeleton Loader (shimmer) =====
+  const SkeletonTripGrid: React.FC<{ count?: number }> = ({ count = 6 }) => {
+    return (
+      <div className="tx-grid">
+        {Array.from({ length: count }).map((_, i) => (
+          <article className="tx-card tx-skel-card" key={i} aria-hidden="true">
+            {/* รูป */}
+            <div className="tx-media">
+              <div className="tx-skel-block tx-skel-media" />
+            </div>
+
+            {/* เนื้อหา */}
+            <div className="tx-body">
+              {/* ชื่อทริป 2 บรรทัด */}
+              <div className="tx-skel-line tx-skel-line-lg" />
+              <div className="tx-skel-line tx-skel-line-md" />
+
+              {/* meta: เรตติ้ง • วัน */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <span className="tx-skel-chip" />
+                <span className="tx-dot" />
+                <span className="tx-skel-dotline" />
+              </div>
+
+              {/* คอมเมนต์ 2 บรรทัด */}
+              <div className="tx-skel-line" />
+              <div className="tx-skel-line tx-skel-line-sm" />
+            </div>
+
+            {/* ฟุทเตอร์: avatar + ชื่อ + ปุ่ม */}
+            <div className="tx-footer">
+              <span className="tx-skel-avatar" />
+              <span className="tx-skel-line tx-skel-user" />
+              <span className="tx-spacer" />
+              <span className="tx-skel-btn" />
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  };
+
+
   return (
     <div className="tx-page">
       {contextHolder}
@@ -298,21 +341,8 @@ const TripExplore: React.FC = () => {
         <p className="tx-sub">สำรวจแผนทริปจริงจากผู้ใช้ พร้อมคะแนนและรีวิว</p>
       </header>
 
-      {loading && (
-        <div className="tx-grid">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div className="tx-card" key={i}>
-              <div className="tx-media">
-                <Skeleton.Node style={{ width: "100%", height: "100%" }} active />
-              </div>
-              <div className="tx-body">
-                <Skeleton active paragraph={{ rows: 2 }} title={{ width: "60%" }} />
-              </div>
-              <div className="tx-footer" />
-            </div>
-          ))}
-        </div>
-      )}
+      {loading && <SkeletonTripGrid count={6} />}
+
 
       {!loading && items.length === 0 && (
         <div className="tx-empty">

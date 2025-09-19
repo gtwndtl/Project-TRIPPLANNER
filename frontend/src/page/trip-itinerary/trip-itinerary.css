@@ -654,4 +654,10 @@
   .review-modal .ant-modal-body { padding: 8px 16px 0; }
 }
 
-
+.ant-skeleton .ant-skeleton-button,
+.ant-skeleton .ant-skeleton-input {
+  border-radius: var(--radius)!important;
+}
+.ant-skeleton .ant-skeleton-avatar {
+  border-radius: 10px!important; 
+}

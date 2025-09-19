@@ -194,3 +194,72 @@
   border-radius: 999px;
   backdrop-filter: blur(6px);
 }
+
+/* ============ Skeleton Loader (TripRecommendations) ============ */
+@keyframes reco-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reco-skel-block,
+  .reco-skel-line,
+  .reco-skel-chip,
+  .reco-skel-media,
+  .reco-skel-badge {
+    animation: none !important;
+  }
+}
+
+/* ปิด interactive ตอนโหลด */
+.reco-skel-card { pointer-events: none; }
+
+/* พื้นฐาน shimmer */
+.reco-skel-block,
+.reco-skel-line,
+.reco-skel-chip,
+.reco-skel-media,
+.reco-skel-badge {
+  background: linear-gradient(
+    90deg,
+    rgba(148,163,184,.16) 0%,
+    rgba(148,163,184,.30) 40%,
+    rgba(148,163,184,.16) 80%
+  );
+  background-size: 200% 100%;
+  animation: reco-shimmer 1.6s linear infinite;
+  border-radius: 10px;
+}
+
+/* รูป */
+.reco-skel-media {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+}
+
+/* ป้ายวัน (ตำแหน่งเดียวกับ .trip-reco-badge) */
+.reco-skel-badge {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 64px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+/* เส้นชื่อ */
+.reco-skel-line { height: 14px; }
+.reco-skel-title {
+  width: 80%;
+  height: 16px;
+  margin-top: 2px;
+  border-radius: 8px;
+}
+
+/* ชิปเรตติ้ง */
+.reco-skel-chip {
+  width: 70px;
+  height: 24px;
+  border-radius: 999px;
+}

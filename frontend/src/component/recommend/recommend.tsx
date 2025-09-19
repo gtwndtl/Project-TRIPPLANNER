@@ -1,6 +1,6 @@
 // src/component/trip-recommendations/TripRecommendations.tsx
 import React, { useEffect, useState, useCallback, memo } from "react";
-import { message, Spin, Empty, Tooltip } from "antd";
+import { message, Empty, Tooltip } from "antd";
 import { StarFilled } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -286,10 +286,35 @@ const TripRecommendations: React.FC = () => {
     const controller = new AbortController(); load(controller.signal); return () => controller.abort();
   }, [load]);
 
+  // ===== Skeleton Loader (shimmer) =====
+  const SkeletonRecoList: React.FC<{ count?: number }> = ({ count = 4 }) => {
+    return (
+      <aside className="trip-sidebar" aria-busy="true">
+        {Array.from({ length: count }).map((_, i) => (
+          <div className="trip-recommendation reco-skel-card" key={i} aria-hidden="true">
+            <div className="trip-reco-media">
+              <div className="reco-skel-block reco-skel-media" />
+              <span className="reco-skel-badge" />
+            </div>
+
+            <div className="trip-reco-text">
+              <div className="reco-skel-line reco-skel-title" />
+              <div className="trip-reco-meta" style={{ marginTop: 6 }}>
+                <span className="reco-skel-chip" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </aside>
+    );
+  };
+
+
   return (
     <aside className="trip-sidebar">
       {contextHolder}
-      {loading && <div className="reco-state"><Spin /></div>}
+      {loading && <SkeletonRecoList count={4} />}
+
 
       {!loading && items.length === 0 && (
         <div className="reco-state"><Empty description="ยังไม่มีรีวิวทริป" /></div>
