@@ -140,7 +140,6 @@ const Navbar = () => {
           <Link to="/">Home</Link>
           <Link to="/trip-chat">Chat</Link>
           <Link to="/itinerary/explore">Explore</Link>
-          <Link to="/help">Help</Link>
         </nav>
 
         {!isLogin && (

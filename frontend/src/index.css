@@ -2,7 +2,7 @@
    Global Reset & Fonts
 ======================= */
 * {
-  font-family: 'Plus Jakarta Sans','Prompt', 'Noto Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Prompt', 'Noto Sans', sans-serif;
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -19,16 +19,31 @@ textarea,
   text-decoration: none;
 }
 
-:root{
-  --nav-h: 56px;                  /* ความสูงจริงของ navbar */
+:root {
+  --nav-h: 56px;
+  /* ความสูงจริงของ navbar */
 }
 
 /* ใช้กับ .navbar (sticky) */
-.navbar{
-  height: var(--nav-h);           /* ฟิกส่วนสูงให้แน่นอน */
+.navbar {
+  height: var(--nav-h);
+  /* ฟิกส่วนสูงให้แน่นอน */
 }
 
 /* ถ้าใช้ .navbar--fixed ก็ให้ความสูงเท่ากัน */
-.navbar--fixed{
+.navbar--fixed {
   height: var(--nav-h);
 }
+
+/* ให้เลื่อนแล้วหยุดต่ำกว่าเฮดเดอร์ ~72px */
+#how-it-works {
+  scroll-margin-top: 72px;
+}
+#journey-inspirations {
+  scroll-margin-top: 72px;
+}
+html {
+  scroll-behavior: smooth;
+}
+
+/* เผื่อกรณีเลื่อนด้วย hash ธรรมดา */

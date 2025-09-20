@@ -480,3 +480,152 @@
 @media (max-width: 820px) {
   .inspire-card.is-skeleton { aspect-ratio: 16/9; }
 }
+/* ===== Big How-it-works Cards ===== */
+
+#how-it-works { scroll-margin-top: 72px; } /* กันโดน Navbar ทับ */ 
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 18px;
+  padding: 0 8px;
+}
+
+/* desktop = การ์ดใหญ่ 3 ใบ แบบ 12-cols: 4/4/4 */
+.how-card {
+  grid-column: span 4;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  min-height: 320px;
+  background: #0b1220;           /* base มืดเพื่อให้ข้อความเด่น */
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(2,6,23,.18);
+  padding: 22px 22px 24px;
+  display: grid;
+  align-content: end;            /* เนื้อหาอยู่ช่วงล่าง */
+  gap: 10px;
+  isolation: isolate;            /* ให้ z-index ของลูกอยู่เหนือ bg */
+  cursor: default;
+  transition: transform .18s ease, box-shadow .22s ease, filter .22s ease;
+}
+
+.how-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px rgba(2,6,23,.24);
+  filter: saturate(1.05);
+}
+
+.how-card:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px rgba(37,99,235,.35), 0 18px 38px rgba(2,6,23,.24);
+}
+
+/* ทำให้ทั้งการ์ดคลิกได้ (สำหรับใบที่มี onClick) */
+.how-card[role="button"] { cursor: pointer; }
+
+/* พื้นหลังมีรูป/ไล่สี */
+.how-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(.9);
+}
+.how-card-bg::after {
+  /* gradient เคลือบให้ตัวหนังสืออ่านง่าย */
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.75) 100%);
+}
+
+.how-card-bg.how-1 {
+  background-image: 
+    linear-gradient(135deg, rgba(37,99,235,.12), rgba(56,189,248,.12)),
+    url("../../assets/destination.jpg");
+}
+.how-card-bg.how-2 {
+  background-image: linear-gradient(135deg, rgba(16,185,129,.12), rgba(107,114,128,.12)),
+    url("../../assets/process.jpg");
+}
+.how-card-bg.how-3 {
+  background-image: linear-gradient(135deg, rgba(244,63,94,.12), rgba(99,102,241,.12)),
+    url("../../assets/itinerary.png");
+}
+
+/* Badge step */
+.how-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  color: #0b1220;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 999px;
+}
+
+/* ไอคอนกลมใหญ่กว่าปกติ */
+.how-icon {
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.12);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.24);
+  backdrop-filter: blur(4px);
+}
+
+/* Title + Description */
+.how-title {
+  z-index: 1;
+  margin: 6px 0 0 0;
+  font-size: clamp(20px, 3.2vw, 26px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 10px rgba(0,0,0,.28);
+}
+.how-desc {
+  z-index: 1;
+  margin: 4px 0 8px 0;
+  font-size: 14px;
+  opacity: .95;
+}
+
+/* CTA */
+.how-cta-row {
+  z-index: 1;
+  display: inline-flex;
+}
+.how-cta.ant-btn {
+  border-radius: 999px;
+  font-weight: 700;
+  padding-inline: 18px;
+  height: 40px;
+}
+.how-cta.ghost.ant-btn {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.5);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.how-cta.ghost.ant-btn:hover { background: rgba(255,255,255,.24); }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .how-card { min-height: 300px; }
+}
+@media (max-width: 820px) {
+  .how-grid { grid-template-columns: 1fr; }
+  .how-card { grid-column: auto; min-height: 260px; }
+}

@@ -1,13 +1,13 @@
 import "./landing.css";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Carousel, Spin, Empty, Tooltip, Avatar, Button } from "antd";
-import { CompassOutlined, BranchesOutlined, ScheduleOutlined, StarFilled, UserOutlined } from "@ant-design/icons";
+import { Carousel, Empty, Tooltip, Avatar, Button } from "antd";
+import { CompassOutlined, BranchesOutlined, ScheduleOutlined, StarFilled } from "@ant-design/icons";
 import a1 from "../../assets/a.jpg";
 import a2 from "../../assets/b.jpg";
 import a3 from "../../assets/c.jpg";
 import a4 from "../../assets/d.jpg";
 import a5 from "../../assets/e.jpg";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   GetAllReviews,
@@ -126,6 +126,7 @@ const initials = (name?: string) => {
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState<boolean>(false);
   const [topTrips, setTopTrips] = useState<EnrichedReview[]>([]);
@@ -311,6 +312,16 @@ const Landing: React.FC = () => {
 
   const hasRecs = useMemo(() => topTrips.length > 0, [topTrips]);
 
+  useEffect(() => {
+    const want = location.hash === "#how-it-works" || (location.state as any)?.scrollTo === "how-it-works";
+    if (want) {
+      // รอให้ DOM วาดเสร็จสั้นๆ แล้วค่อยเลื่อน (กันภาพ/คอมโพเนนต์ยังโหลดไม่ครบ)
+      requestAnimationFrame(() => {
+        document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location]);
+
   return (
     <>
       <div className="landing-container">
@@ -368,8 +379,8 @@ const Landing: React.FC = () => {
             </div>
           </section>
 
-          {/* ===== How It Works (modern/minimal) ===== */}
-          <section className="landing-how-it-works">
+          {/* ===== How It Works (hero cards) ===== */}
+          <section id="how-it-works" className="landing-how-it-works">
             <div className="landing-section-header">
               <h1 className="landing-section-title">How it works</h1>
               <p className="landing-section-description">
@@ -377,41 +388,55 @@ const Landing: React.FC = () => {
               </p>
             </div>
 
-            <div className="landing-steps-grid modern">
-              <div className="landing-step-card modern">
-                <div className="landing-step-icon modern">
+            <div className="how-grid">
+              {/* Card 1 */}
+              <article
+                className="how-card"
+                role="button"
+                tabIndex={0}
+                aria-label="เริ่มวางแผนทริปด้วยการบอกปลายทาง"
+              >
+                <div className="how-card-bg how-1" />
+                <div className="how-badge">Step 1</div>
+                <div className="how-icon">
                   <CompassOutlined />
                 </div>
-                <div className="landing-step-text">
-                  <h2 className="landing-step-title">Tell us your destination</h2>
-                  <p className="landing-step-description">ระบุเมือง/สถานที่ที่อยากไป</p>
-                </div>
-              </div>
+                <h3 className="how-title">Tell us your destination</h3>
+                <p className="how-desc">บอกเราว่าคุณอยากไปที่ไหน · กี่วัน · สไตล์ · งบเท่าไหร่</p>
+              </article>
 
-              <div className="landing-step-card modern">
-                <div className="landing-step-icon modern">
+              {/* Card 2 */}
+              <article className="how-card" aria-label="ระบบช่วยวางแผนอัตโนมัติ">
+                <div className="how-card-bg how-2" />
+                <div className="how-badge">Step 2</div>
+                <div className="how-icon">
                   <BranchesOutlined />
                 </div>
-                <div className="landing-step-text">
-                  <h2 className="landing-step-title">Algorithm plans for you</h2>
-                  <p className="landing-step-description">ระบบจัดลำดับเส้นทางและเวลาอัตโนมัติ</p>
-                </div>
-              </div>
+                <h3 className="how-title">Algorithm plans for you</h3>
+                <p className="how-desc">ระบบจัดลำดับสถานที่ · ที่พัก · ร้านอาหาร ครบ</p>
+              </article>
 
-              <div className="landing-step-card modern">
-                <div className="landing-step-icon modern">
+              {/* Card 3 */}
+              <article
+                className="how-card"
+                role="button"
+                tabIndex={0}
+                aria-label="ใช้งานแผนหรือปรับแต่งได้ทันที"
+              >
+                <div className="how-card-bg how-3" />
+                <div className="how-badge">Step 3</div>
+                <div className="how-icon">
                   <ScheduleOutlined />
                 </div>
-                <div className="landing-step-text">
-                  <h2 className="landing-step-title">Use & tweak</h2>
-                  <p className="landing-step-description">นำแผนไปใช้จริงหรือแก้ไขได้ทันที</p>
-                </div>
-              </div>
+                <h3 className="how-title">Use Your Itinerary</h3>
+                <p className="how-desc">นำแผนการเดินทางของคุณไปใช้ · พร้อมแผนที่จริง</p>
+              </article>
             </div>
           </section>
 
-{/* ===== Journey Inspirations ===== */}
-          <section className="landing-inspire">
+
+          {/* ===== Journey Inspirations ===== */}
+          <section id="journey-inspirations" className="landing-inspire">
             <div className="landing-section-header">
               <h1 className="landing-section-title">Journey Inspirations from Travelers</h1>
               <p className="landing-section-description">

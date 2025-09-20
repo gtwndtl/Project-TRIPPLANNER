@@ -1,12 +1,27 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // 👈 เพิ่ม useLocation
 import "./footer.css";
 
 const SiteFooter: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // 👈 เพิ่ม
+
   const go = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     e.preventDefault();
     navigate(path);
+  };
+
+  // 👇 ฟังก์ชันเลื่อนไปยัง section ตาม id
+  const goHash = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+
+    if (location.pathname === "/") {
+      // อยู่หน้า Landing แล้ว → เลื่อนทันที
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      // อยู่หน้าอื่น → กลับหน้า Landing แล้วค่อยเลื่อน
+      navigate("/", { state: { scrollTo: id } });
+    }
   };
 
   return (
@@ -31,9 +46,17 @@ const SiteFooter: React.FC = () => {
           <div className="footer-col">
             <h4 className="footer-title">Resources</h4>
             <ul className="footer-links">
-              <li><a href="#faq">FAQ</a></li>
-              <li><a href="#how-it-works">How it works</a></li>
-              <li><a href="#contact">Support</a></li>
+              {/* 👇 เปลี่ยนลิงก์ How it works ให้เรียก goHash */}
+              <li>
+                <a href="/#how-it-works" onClick={(e) => goHash(e, "how-it-works")}>
+                  How it works
+                </a>
+              </li>
+              <li>
+                <a href="/#journey-inspirations" onClick={(e) => goHash(e, "journey-inspirations")}>
+                  Journey Inspirations
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -42,7 +65,6 @@ const SiteFooter: React.FC = () => {
             <h4 className="footer-title">Contact</h4>
             <ul className="footer-links">
               <li><a href="mailto:support@tripplanner.app">support@tripplanner.app</a></li>
-              <li><a href="#feedback">Feedback</a></li>
             </ul>
           </div>
         </div>
@@ -50,9 +72,9 @@ const SiteFooter: React.FC = () => {
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Trip Planner</span>
           <nav className="footer-bottom-links">
-            <a href="#privacy">Privacy</a>
-            <a href="#terms">Terms</a>
-            <a href="#status">Status</a>
+            <a href="/#privacy">Privacy</a>
+            <a href="/#terms">Terms</a>
+            <a href="/#status">Status</a>
           </nav>
         </div>
       </div>
