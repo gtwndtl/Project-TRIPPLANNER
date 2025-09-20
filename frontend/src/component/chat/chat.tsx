@@ -375,7 +375,7 @@ const TripChat = () => {
     {
       id: crypto.randomUUID(),
       role: "ai",
-      text: 'สวัสดีค่ะ! ฉันช่วยวางแผนทริปให้ได้เลย ลองพิมพ์ว่า "อยากไปอารีย์ 2 วัน งบ 5,000 เน้นชิวๆ เดินเล่น และมีจุดชมวิว" ดูก็ได้ 😊',
+      text: 'สวัสดีค่ะ ฉันช่วยวางแผนทริปให้ได้เลย ลองพิมพ์ว่า "อยากไปอารีย์ 2 วัน งบ 5,000 เน้นชิวๆ เดินเล่น และมีจุดชมวิว" ดูก็ได้ 😊',
       kind: "text",
     },
     ...(isPreviewOnly
@@ -1255,7 +1255,7 @@ ${landmarkNames}
       <div className="trip-chat-row">
         <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
         <div className="trip-chat-bubble-group left">
-          <p className="trip-chat-author">AI Assistant</p>
+          <p className="trip-chat-author">Your Assistant</p>
           <div className="trip-chat-bubble ai">
             <div style={{ marginBottom: 8, fontWeight: 600 }}>
               จาก "{lastSuggestKeyword}" เราพบสถานที่ใกล้เคียง เลือกได้เลย:
@@ -1329,7 +1329,7 @@ ${landmarkNames}
   return (
     <main className="trip-chat-main">
       <div className="trip-chat-titlebar">
-        <h1 className="trip-chat-title">Chat with AI</h1>
+        <h1 className="trip-chat-title">Chat with Your Assistant</h1>
       </div>
 
       {/* โซนสกอลล์รายการข้อความ */}
@@ -1344,7 +1344,7 @@ ${landmarkNames}
               <div key={m.id} className={`trip-chat-row ${isUser ? "right" : ""}`}>
                 {!isUser && <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />}
                 <div className={`trip-chat-bubble-group ${isUser ? "right" : "left"}`}>
-                  <p className={`trip-chat-author ${isUser ? "right" : ""}`}>AI Assistant</p>
+                  <p className={`trip-chat-author ${isUser ? "right" : ""}`}>Your Assistant</p>
                   <div className={`trip-chat-bubble ai`}>
                     <div
                       style={{
@@ -1395,7 +1395,7 @@ ${landmarkNames}
               <div key={m.id} className="trip-chat-row">
                 <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
                 <div className="trip-chat-bubble-group left">
-                  <p className="trip-chat-author">AI Assistant</p>
+                  <p className="trip-chat-author">Your Assistant</p>
                   <div className="trip-chat-bubble ai">
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
                       <div style={{ fontWeight: 600, marginBottom: 8, textAlign: "center" }}>
@@ -1444,7 +1444,7 @@ ${landmarkNames}
               <div key={m.id} className="trip-chat-row">
                 <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
                 <div className="trip-chat-bubble-group left">
-                  <p className="trip-chat-author">AI Assistant</p>
+                  <p className="trip-chat-author">Your Assistant</p>
                   <div className="trip-chat-bubble ai">{bp.text}</div>
                 </div>
               </div>
@@ -1458,7 +1458,7 @@ ${landmarkNames}
               <div key={m.id} className="trip-chat-row">
                 <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
                 <div className="trip-chat-bubble-group left">
-                  <p className="trip-chat-author">AI Assistant</p>
+                  <p className="trip-chat-author">Your Assistant</p>
                   <div className="trip-chat-bubble ai">
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
                       <div style={{ fontWeight: 600, marginBottom: 8, textAlign: "center" }}>
@@ -1508,7 +1508,7 @@ ${landmarkNames}
               <div key={m.id} className="trip-chat-row">
                 <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
                 <div className="trip-chat-bubble-group left">
-                  <p className="trip-chat-author">AI Assistant</p>
+                  <p className="trip-chat-author">Your Assistant</p>
                   <div className="trip-chat-bubble ai">
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, background: "#fff" }}>
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>
@@ -1589,7 +1589,7 @@ ${landmarkNames}
 
               <div className={`trip-chat-bubble-group ${isUser ? "right" : "left"}`}>
                 <p className={`trip-chat-author ${isUser ? "right" : ""}`}>
-                  {isUser ? (user?.Firstname ?? "You") : "AI Assistant"}
+                  {isUser ? (user?.Firstname ?? "You") : "Your Assistant"}
                 </p>
 
                 <div className={`trip-chat-bubble ${isUser ? "user" : "ai"}`}>
@@ -1625,7 +1625,7 @@ ${landmarkNames}
           <div className="trip-chat-row">
             <div className="trip-chat-avatar" style={{ backgroundImage: `url("${AVATAR_URL}")` }} />
             <div className="trip-chat-bubble-group left">
-              <p className="trip-chat-author">AI Assistant</p>
+              <p className="trip-chat-author">Your Assistant</p>
               <p className="trip-chat-bubble ai">
                 <div className="typing">
                   <span></span>

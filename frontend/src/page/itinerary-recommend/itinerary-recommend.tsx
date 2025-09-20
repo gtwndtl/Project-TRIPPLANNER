@@ -223,7 +223,7 @@ const TripItineraryRecommend: React.FC = () => {
 
           {/* Map card (ล่าง) */}
           <div className="no-print" style={mapCardStyle}>
-            <MapRoute/>
+            <MapRoute />
           </div>
         </aside>
 
@@ -263,15 +263,10 @@ const TripItineraryRecommend: React.FC = () => {
                           <ItemIcon code={record.ToCode} />
                         </div>
                         <div className="itin-cardrow-text">
-                          <p
-                            className="title-itin"
-                            dangerouslySetInnerHTML={{
-                              __html: (record.ActivityDescription || "-").replace(
-                                /\*\*(.*?)\*\*/g,
-                                "<strong>$1</strong>"
-                              ),
-                            }}
-                          />
+                          <p className="title-itin">
+                            {(record.ActivityDescription || "-").replace(/\*\*/g, "")}
+                          </p>
+
                           <p className="sub">{displayName(record.ToCode)}</p>
                           <p className="sub">
                             {record.StartTime} - {record.EndTime}

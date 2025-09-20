@@ -63,16 +63,12 @@ const deepClone = <T,>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-// Render **bold** โดยไม่ใช้ dangerouslySetInnerHTML
 const renderDescNode = (raw?: string) => {
   const text = raw ?? "-";
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((p, i) => {
-    const m = /^\*\*(.+)\*\*$/.exec(p);
-    if (m) return <strong key={i}>{m[1]}</strong>;
-    return <React.Fragment key={i}>{p}</React.Fragment>;
-  });
+  // ลบ ** ทั้งหมด -> ไม่เหลือ bold markdown
+  return text.replace(/\*\*/g, "");
 };
+
 
 // ===== Kind helpers =====
 const inferKind = (code?: string): PlaceKind => {
