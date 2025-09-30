@@ -429,7 +429,7 @@ const Landing: React.FC = () => {
                   <ScheduleOutlined />
                 </div>
                 <h3 className="how-title">Use Your Itinerary</h3>
-                <p className="how-desc">นำแผนการเดินทางของคุณไปใช้ · พร้อมแผนที่จริง</p>
+                <p className="how-desc">นำแผนการเดินทางของคุณไปใช้งานจริง</p>
               </article>
             </div>
           </section>
